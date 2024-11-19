@@ -8,19 +8,19 @@
 [mypy]: <http://mypy-lang.org>
 [mkdocs badge]: <https://img.shields.io/badge/docs-mkdocs%20material-blue.svg?style=flat>
 [mkdocs]: <https://squidfunk.github.io/mkdocs-material>
-[version badge]: <https://img.shields.io/pypi/v/brainblocks.svg>
-[pythonversion badge]: <https://img.shields.io/pypi/pyversions/brainblocks.svg>
-[downloads badge]: <https://img.shields.io/pypi/dd/brainblocks>
-[gitter]: <https://gitter.im/brainblocks/community>
+[version badge]: <https://img.shields.io/pypi/v/scikit-ai.svg>
+[pythonversion badge]: <https://img.shields.io/pypi/pyversions/scikit-ai.svg>
+[downloads badge]: <https://img.shields.io/pypi/dd/scikit-ai>
+[gitter]: <https://gitter.im/scikit-ai/community>
 [gitter badge]: <https://badges.gitter.im/join%20chat.svg>
-[discussions]: <https://github.com/BrainBlocksAI/brainblocks/discussions>
-[discussions badge]: <https://img.shields.io/github/discussions/BrainBlocksAI/brainblocks>
-[ci]: <https://github.com/BrainBlocksAI/brainblocks/actions?query=workflow>
-[ci badge]: <https://github.com/BrainBlocksAI/brainblocks/actions/workflows/ci.yml/badge.svg?branch=main>
-[doc]: <https://github.com/BrainBlocksAI/brainblocks/actions?query=workflow>
-[doc badge]: <https://github.com/BrainBlocksAI/brainblocks/actions/workflows/doc.yml/badge.svg?branch=main>
+[discussions]: <https://github.com/scikit-aiAI/scikit-ai/discussions>
+[discussions badge]: <https://img.shields.io/github/discussions/scikit-aiAI/scikit-ai>
+[ci]: <https://github.com/scikit-aiAI/scikit-ai/actions?query=workflow>
+[ci badge]: <https://github.com/scikit-aiAI/scikit-ai/actions/workflows/ci.yml/badge.svg?branch=main>
+[doc]: <https://github.com/scikit-aiAI/scikit-ai/actions?query=workflow>
+[doc badge]: <https://github.com/scikit-aiAI/scikit-ai/actions/workflows/doc.yml/badge.svg?branch=main>
 
-# brainblocks
+# scikit-ai
 
 [![ci][ci badge]][ci] [![doc][doc badge]][doc]
 
@@ -33,27 +33,26 @@
 
 ## Introduction
 
-A Reinforcement Learning library that implements a range of classical, deep, and LLM-based RL algorithms. 
+A unified AI library that brings together classical machine learning, reinforcement learning (RL), and large language models
+(LLMs) under a consistent and simple interface.
 
-It mimics the simplicity of [scikit-learn's](https://scikit-learn.org/) API and integrates with the
-[Tianshou](https://tianshou.org/en/stable/) RL library. It also leverages
-[textgrad](https://github.com/huggingface/textgrad), [DSPy](https://github.com/darkprinx/dspy), and
-[DocArray](https://github.com/docarray/docarray) to support the implementation LLM-based agent development.
+It mimics the simplicity of [scikit-learn](https://scikit-learn.org/stable)’s API and integrates with its ecosystem, while also
+supporting libraries like [TorchRL](https://docs.pytorch.org/rl/stable/index.html), [oumi](https://oumi.ai/), and others.
 
 ## Installation
 
-For user installation, `brainblocks` is currently available on the PyPi's repository, and you can
+For user installation, `scikit-ai` is currently available on the PyPi's repository, and you can
 install it via `pip`:
 
 ```bash
-pip install brainblocks
+pip install scikit-ai
 ```
 
 Development installation requires to clone the repository and then use [PDM](https://github.com/pdm-project/pdm) to install the
 project as well as the main and development dependencies:
 
 ```bash
-git clone https://github.com/BrainBlocksAI/brainblocks.git
-cd brainblocks
+git clone https://github.com/scikit-aiAI/scikit-ai.git
+cd scikit-ai
 pdm install
 ```

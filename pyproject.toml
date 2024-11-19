@@ -3,8 +3,8 @@ requires = ["pdm-pep517"]
 build-backend = "pdm.pep517.api"
 
 [project]
-name = "brainblocks"
-description = "A Reinforcement Learning library that implements a variety of classical RL, deep RL, and LLM-based RL algorithms."
+name = "scikit-ai"
+description = "A unified AI library that brings together classical machine learning, reinforcement learning, and large language models under a consistent and simple interface."
 authors = [{name = "Georgios Douzas", email = "gdouzas@icloud.com"}]
 license = "MIT"
 readme = "README.md"
@@ -25,19 +25,23 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "rich>=13.9.4",
     "scikit-learn>=1.5.2",
-    "tianshou>=1.1.0",
+    "torchrl>=0.8",
+    "openai>=1.82.0",
+    "python-dotenv>=1.1.0",
+    "gymnasium>=1.1.1",
 ]
 
 [project.urls]
-Homepage = "https://BrainBlocksAI.github.io/brainblocks"
-Documentation = "https://BrainBlocksAI.github.io/brainblocks"
-Changelog = "https://BrainBlocksAI.github.io/brainblocks/changelog"
-Repository = "https://github.com/BrainBlocksAI/brainblocks"
-Issues = "https://github.com/BrainBlocksAI/brainblocks/issues"
-Discussions = "https://github.com/BrainBlocksAI/brainblocks/discussions"
-Gitter = "https://gitter.im/brainblocks/community"
-Funding = "https://github.com/sponsors/BrainBlocksAI"
+Homepage = "https://georgedouzas.github.io/scikit-ai"
+Documentation = "https://georgedouzas.github.io/scikit-ai"
+Changelog = "https://georgedouzas.github.io/scikit-ai/changelog"
+Repository = "https://github.com/georgedouzas/scikit-ai"
+Issues = "https://github.com/georgedouzas/scikit-ai/issues"
+Discussions = "https://github.com/georgedouzas/scikit-ai/discussions"
+Gitter = "https://gitter.im/scikit-ai/community"
+Funding = "https://github.com/sponsors/georgedouzas"
 
 [tool.pdm]
 version = {source = "scm"}
@@ -107,6 +111,7 @@ in-place = true
 recursive = true
 close-quotes-on-newline = true
 wrap-descriptions = 120
+wrap-summaries = 120
 
 [tool.ruff]
 extend-exclude = ["docs/generated"]

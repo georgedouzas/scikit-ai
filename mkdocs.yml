@@ -1,10 +1,10 @@
-site_name: "brainblocks"
-site_description: "A Reinforcement Learning library that implements a variety of classical RL, deep RL, and LLM-based RL algorithms."
-site_url: "https://BrainBlocksAI.github.io/brainblocks"
-repo_url: "https://github.com/BrainBlocksAI/brainblocks"
-repo_name: "BrainBlocksAI/brainblocks"
+site_name: "scikit-ai"
+site_description: "A unified AI library that brings together classical machine learning, reinforcement learning, and large language models under a consistent and simple interface."
+site_url: "https://georgedouzas.github.io/scikit-ai"
+repo_url: "https://github.com/georgedouzas/scikit-ai"
+repo_name: "georgedouzas/scikit-ai"
 site_dir: "site"
-watch: [README.md, CONTRIBUTING.md, CHANGELOG.md, src/brainblocks]
+watch: [README.md, CONTRIBUTING.md, CHANGELOG.md, src/skai]
 
 theme:
   name: material

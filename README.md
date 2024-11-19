@@ -33,12 +33,11 @@
 
 ## Introduction
 
-A Reinforcement Learning library that implements a range of classical, deep, and LLM-based RL algorithms. 
+A unified AI library that brings together classical machine learning, reinforcement learning (RL), and large language models
+(LLMs) under a consistent and simple interface.
 
-It mimics the simplicity of [scikit-learn's](https://scikit-learn.org/) API and integrates with the
-[Tianshou](https://tianshou.org/en/stable/) RL library. It also leverages
-[textgrad](https://github.com/huggingface/textgrad), [DSPy](https://github.com/darkprinx/dspy), and
-[DocArray](https://github.com/docarray/docarray) to support the implementation LLM-based agent development.
+It mimics the simplicity of scikit-learn’s API and integrates with the scikit-learn ecosystem, while also supporting libraries
+like [TorchRL](https://docs.pytorch.org/rl/stable/index.html), [oumi](https://oumi.ai/), and others.
 
 ## Installation
 

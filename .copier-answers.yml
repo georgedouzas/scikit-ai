@@ -1,4 +1,4 @@
-_commit: 0.11.0
+_commit: 0.14.0
 _src_path: gh:georgedouzas/copier-pdm-nox.git
 author_email: gdouzas@icloud.com
 author_fullname: Georgios Douzas
@@ -7,11 +7,12 @@ copyright_date: '2024'
 copyright_holder: Georgios Douzas
 copyright_holder_email: gdouzas@icloud.com
 copyright_license: MIT License
-project_description: A Reinforcement Learning library that implements a variety of
-    classical RL, deep RL, and LLM-based RL algorithms.
-python_package_distribution_name: brainblocks
-python_package_import_name: brainblocks
+project_description: A unified AI library that brings together classical machine learning,
+    reinforcement learning, and large language models under a consistent and simple
+    interface.
+python_package_distribution_name: scikit-ai
+python_package_import_name: skai
 python_versions: '>=3.11, <3.13'
-repository_name: brainblocks
-repository_namespace: BrainBlocksAI
+repository_name: scikit-ai
+repository_namespace: georgedouzas
 

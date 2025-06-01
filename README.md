@@ -13,12 +13,12 @@
 [downloads badge]: <https://img.shields.io/pypi/dd/scikit-ai>
 [gitter]: <https://gitter.im/scikit-ai/community>
 [gitter badge]: <https://badges.gitter.im/join%20chat.svg>
-[discussions]: <https://github.com/scikit-aiAI/scikit-ai/discussions>
-[discussions badge]: <https://img.shields.io/github/discussions/scikit-aiAI/scikit-ai>
-[ci]: <https://github.com/scikit-aiAI/scikit-ai/actions?query=workflow>
-[ci badge]: <https://github.com/scikit-aiAI/scikit-ai/actions/workflows/ci.yml/badge.svg?branch=main>
-[doc]: <https://github.com/scikit-aiAI/scikit-ai/actions?query=workflow>
-[doc badge]: <https://github.com/scikit-aiAI/scikit-ai/actions/workflows/doc.yml/badge.svg?branch=main>
+[discussions]: <https://github.com/scikit-ai/scikit-ai/discussions>
+[discussions badge]: <https://img.shields.io/github/discussions/scikit-ai/scikit-ai>
+[ci]: <https://github.com/scikit-ai/scikit-ai/actions?query=workflow>
+[ci badge]: <https://github.com/scikit-ai/scikit-ai/actions/workflows/ci.yml/badge.svg?branch=main>
+[doc]: <https://github.com/scikit-ai/scikit-ai/actions?query=workflow>
+[doc badge]: <https://github.com/scikit-ai/scikit-ai/actions/workflows/doc.yml/badge.svg?branch=main>
 
 # scikit-ai
 
@@ -52,7 +52,7 @@ Development installation requires to clone the repository and then use [PDM](htt
 project as well as the main and development dependencies:
 
 ```bash
-git clone https://github.com/scikit-aiAI/scikit-ai.git
+git clone https://github.com/scikit-ai/scikit-ai.git
 cd scikit-ai
 pdm install
 ```

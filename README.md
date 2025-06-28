@@ -33,8 +33,8 @@
 
 ## Introduction
 
-A unified AI library that brings together classical machine learning, reinforcement learning (RL), and large language models
-(LLMs) under a consistent and simple interface.
+A unified AI library that brings together classical Machine Learning, Reinforcement Learning, and Large Language Models under a
+consistent and simple interface.
 
 It mimics the simplicity of [scikit-learn](https://scikit-learn.org/stable)’s API and integrates with its ecosystem, while also
 supporting libraries like [TorchRL](https://docs.pytorch.org/rl/stable/index.html), [oumi](https://oumi.ai/), and others.

@@ -4,11 +4,11 @@ build-backend = "pdm.pep517.api"
 
 [project]
 name = "scikit-ai"
-description = "A unified AI library that brings together classical machine learning, reinforcement learning, and large language models under a consistent and simple interface."
+description = "A unified AI library that brings together classical Machine Learning, Reinforcement Learning, and Large Language Models under a consistent and simple interface."
 authors = [{name = "Georgios Douzas", email = "gdouzas@icloud.com"}]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11, <3.13"
+requires-python = ">=3.11, <3.14"
 keywords = []
 dynamic = ["version"]
 classifiers = [
@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Documentation",
     "Topic :: Software Development",
     "Topic :: Utilities",

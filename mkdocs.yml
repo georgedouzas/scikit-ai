@@ -1,5 +1,5 @@
 site_name: "scikit-ai"
-site_description: "A unified AI library that brings together classical machine learning, reinforcement learning, and large language models under a consistent and simple interface."
+site_description: "A unified AI library that brings together classical Machine Learning, Reinforcement Learning, and Large Language Models under a consistent and simple interface."
 site_url: "https://georgedouzas.github.io/scikit-ai"
 repo_url: "https://github.com/georgedouzas/scikit-ai"
 repo_name: "georgedouzas/scikit-ai"

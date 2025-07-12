@@ -70,12 +70,12 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
         'prompt': [str, None],
         'responses_kwargs': [dict, None],
         'openai_client': [str, object, None],
-        'classes': ['array-like', None],
+        'classes': [list, dict, None],
     }
     DEFAULT_PROMPT = 'Please classify the following input into one of the available classes.'
     DEFAULT_INSTRUCTIONS = (
         'You are a machine learning classifier. You should only provide an answer that '
-        'is a single word or a number from the available class labels {}. '
+        'is a single word or a number from the available class labels: {}. '
         'Do not provide any additional information.'
     )
 
@@ -85,7 +85,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
         prompt: str | None = None,
         openai_client: str | openai.OpenAI | openai.AsyncOpenAI | None = None,
         responses_kwargs: dict | None = None,
-        classes: np.ndarray | list[np.ndarray] | None = None,
+        classes: dict | np.ndarray | list[np.ndarray] | None = None,
     ) -> None:
         self.k_shot = k_shot
         self.prompt = prompt
@@ -166,30 +166,53 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
             check_classification_targets(y)
         return X, y
 
-    def _validate_instructions(self: Self) -> str:
-        return self.DEFAULT_INSTRUCTIONS.format(self.classes_)
-
-    def _validate_classes(self: Self, X: NDArray | None, y: NDArray | None) -> NDArray:
-        if self.classes is not None and y is not None:
-            error_msg = 'Parameter `classes` must be None when `y` is provided.'
-            raise ValueError(error_msg)
-        elif self.classes is None and y is None:
-            error_msg = 'Parameter `classes` must be provided when `y` is `None`.'
-            raise ValueError(error_msg)
-        elif self.classes is None and y is not None:
-            classes = []
-            for k in range(y.shape[1]):
-                classes.append(np.unique(y[:, k]))
-            if not self.outputs_2d_:
-                classes = classes[0]
-        elif self.classes is not None and y is None:
-            classes = np.sort(check_array(self.classes, ensure_2d=False, dtype=None))
+    def _validate_classes(self: Self, y: NDArray | None) -> NDArray:  # noqa: C901, PLR0912
+        if y is None:
+            if self.classes is None:
+                error_msg = 'Parameter `classes` must be provided when `y` is `None`.'
+                raise ValueError(error_msg)
+            if isinstance(self.classes, list):
+                classes = np.sort(check_array(self.classes, ensure_2d=False, dtype=None))
+            else:
+                classes = self.classes
+        else:
+            if not isinstance(self.classes, dict):
+                if self.classes is not None:
+                    error_msg = (
+                        'Parameter `classes` must be a dictonary of class labels as keys and textual descriptions as '
+                        'values when `y` is provided.'
+                    )
+                    raise TypeError(error_msg)
+            elif np.unique(y).tolist() != list(self.classes):
+                error_msg = 'The unique labels in `y` must be equal to the keys in `classes` when `y` is provided.'
+                raise ValueError(error_msg)
+            if isinstance(self.classes, dict):
+                classes = np.sort(check_array(list(self.classes.values()), ensure_2d=False, dtype=None))
+            elif self.classes is None:
+                classes = []
+                for k in range(y.shape[1]):
+                    classes.append(np.unique(y[:, k]))
+                if not self.outputs_2d_:
+                    classes = classes[0]
+            else:
+                classes = np.sort(check_array(self.classes, ensure_2d=False, dtype=None))
         return classes
+
+    def _validate_instructions(self: Self) -> str:
+        if isinstance(self.classes_, dict):
+            classes = ', '.join([str(cls) for cls in self.classes_.values()])
+        else:
+            classes = ', '.join([str(cls) for cls in self.classes_])
+        instructions = self.DEFAULT_INSTRUCTIONS.format(classes)
+        return instructions
 
     def _validate_k_shot(self, X: np.typing.NDArray | None, y: np.typing.NDArray | None) -> int:
         if isinstance(self.k_shot, np.ndarray | list | tuple):
             if not all(isinstance(k, Integral) for k in self.k_shot):
                 error_msg = 'The \'k_shot\' parameter of OpenAIClassifier must be an array-like object of integers.'
+                raise InvalidParameterError(error_msg)
+            if len(self.k_shot) == 0:
+                error_msg = 'The \'k_shot\' parameter of OpenAIClassifier must be non empty.'
                 raise InvalidParameterError(error_msg)
             k_shot = check_array(self.k_shot, ensure_2d=False, dtype=int).shape[0]
             return k_shot
@@ -197,7 +220,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
             error_msg = 'Parameter `k_shot` must be `None` or `0` when input data `X` or labels `y` is None.'
             raise ValueError(error_msg)
         if self.k_shot is None:
-            return 0
+            return 0 if (y is None or X is None) else len(self.classes_)
         if X is not None and self.k_shot > X.shape[0]:
             error_msg = 'Parameter `k_shot` must be less than or equal to the number of examples in `X`.'
             raise ValueError(error_msg)
@@ -205,21 +228,28 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
 
     def _select_k_shot_examples(self: Self, X: ArrayLike, y: ArrayLike) -> Self:
         self.k_shot_examples_ = None
-        if self.k_shot is None:
-            return self
-        elif isinstance(self.k_shot, int):
-            if self.k_shot > 0:
-                indices = np.random.choice(X.shape[0], size=self.k_shot, replace=False)
-                self.k_shot_examples_ = list(zip(X[indices], y[indices], strict=False))
+        if isinstance(self.k_shot, int) or self.k_shot is None:
+            if self.k_shot_ > 0 and X is not None and y is not None:
+                if self.k_shot is None:
+                    classes = self.classes.keys() if isinstance(self.classes, dict) else self.classes_
+                    indices = np.array(
+                        [np.random.choice(np.flatnonzero(y == cls), replace=False) for cls in classes],
+                    )
+                else:
+                    indices = np.random.choice(X.shape[0], size=self.k_shot_, replace=False)
+                self.k_shot_examples_ = list(zip(X[indices], y[indices].reshape(-1), strict=False))
             return self
         indices = np.array(self.k_shot)
-        self.k_shot_examples_ = list(zip(X[indices], y[indices], strict=False))
+        self.k_shot_examples_ = list(zip(X[indices], y[indices].reshape(-1), strict=False))
         return self
 
     def _add_k_shot_examples(self: Self) -> Self:
         if self.k_shot_examples_ is not None:
             for i, example in enumerate(self.k_shot_examples_):
-                self.prompt_ += f'\n\nExample {i + 1}:\nInput: {example[0]}\nOutput: {example[1]}'
+                self.prompt_ += (
+                    f'\n\nExample {i + 1}:\nInput: {example[0]}\nOutput: '
+                    f'{self.classes[example[1]] if isinstance(self.classes, dict) else example[1]}'
+                )
         return self
 
     def _fit(self, X: ArrayLike | None, y: ArrayLike | None) -> Self:
@@ -237,7 +267,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
         X, y = self._validate_data(X, y)
 
         # Validate classes
-        self.classes_ = self._validate_classes(X, y)
+        self.classes_ = self._validate_classes(y)
 
         # Validate instructions
         self.instructions_ = self._validate_instructions()
@@ -247,6 +277,9 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
 
         # Select k_shot examples and add them to prompt
         self._select_k_shot_examples(X, y)._add_k_shot_examples()
+
+        # Predictions type
+        self.y_dtype_ = y.dtype if y is not None else None
 
         return self
 
@@ -311,4 +344,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
             predictions = self._predict_sync(X)
         else:
             predictions = asyncio.run(self._predict_async(X.tolist()))
-        return np.array(predictions)
+        if isinstance(self.classes, dict):
+            classes_mapping = {v: k for k, v in self.classes.items()}
+            predictions = [classes_mapping.get(pred.strip(), self.classes[0]) for pred in predictions]
+        return np.array(predictions, dtype=self.y_dtype_)

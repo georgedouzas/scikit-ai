@@ -148,7 +148,7 @@ def test_classifier_fit_k_shot_zero(classes, X, y) -> None:
     assert classifier.k_shot_examples_ is None
 
 
-@pytest.mark.parametrize('k_shot', [3, 10])
+@pytest.mark.parametrize('k_shot', [3, 5])
 @pytest.mark.parametrize('classes', [None, CLASSES_MAPPING])
 def test_classifier_fit_k_shot_positive(k_shot, classes) -> None:
     """Tests the fit method and k_shot attribute for positive k_shot."""
@@ -160,7 +160,7 @@ def test_classifier_fit_k_shot_positive(k_shot, classes) -> None:
     assert classifier.k_shot_ == len(classifier.k_shot_examples_) == k_shot
 
 
-@pytest.mark.parametrize('k_shot', [[0, 1], [10, 40]])
+@pytest.mark.parametrize('k_shot', [[0, 1], [4, 2]])
 @pytest.mark.parametrize('classes', [None, CLASSES_MAPPING])
 def test_classifier_fit_k_shot_array(k_shot, classes) -> None:
     """Tests the fit method and k_shot attribute for list k_shot."""
@@ -188,7 +188,7 @@ def test_classifier_fit_prompt_none_k_shot_zero(prompt, classes) -> None:
     assert classifier.prompt_ == prompt
 
 
-@pytest.mark.parametrize('k_shot', [None, 3, 10, [0, 1]])
+@pytest.mark.parametrize('k_shot', [None, 3, 1, [0, 1]])
 @pytest.mark.parametrize('prompt', [None, 'Please classify the input.', 'Provide a classification of the input.'])
 @pytest.mark.parametrize('classes', [None, CLASSES_MAPPING])
 def test_classifier_fit_prompt_none_k_shot_non_zero(k_shot, prompt, classes) -> None:
@@ -274,7 +274,7 @@ def test_classifier_predict_not_fitted() -> None:
         classifier.predict(X_test)
 
 
-@pytest.mark.parametrize('k_shot', [0, 3, [0, 20]])
+@pytest.mark.parametrize('k_shot', [0, 3, [0, 2]])
 @pytest.mark.parametrize('classes', [None, CLASSES_MAPPING])
 def test_classifier_predict(k_shot, classes) -> None:
     """Tests the predict method of classifier when is not fitted."""

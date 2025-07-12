@@ -56,3 +56,52 @@ git clone https://github.com/georgedouzas/scikit-ai.git
 cd scikit-ai
 pdm install
 ```
+
+## Usage
+
+We aim to provide a simple and user-friendly API for working with AI models and functionalities.
+
+### Classification
+
+Let’s start with a basic text classification example:
+
+```python
+X = ['This is a positive review.', 'This is a negative review.']
+y = [1, 0]
+```
+
+Now, create a k-shot classifier:
+
+```python
+from skai.llm import OpenAIClassifier
+
+clf = OpenAIClassifier()
+clf.fit(X, y)
+clf.predict([
+    'I absolutely loved this movie!',
+    'The product was terrible and broke immediately.'
+])
+```
+
+By default, the classifier uses reasonable k-shot settings. You can inspect them:
+
+Number of examples used in the prompt:
+
+```python
+print(clf.k_shot_)
+```
+
+Instructions given to the model:
+
+```python
+print(clf.instructions_)
+```
+
+The complete prompt sent to the language model:
+
+```python
+print(clf.prompt_)
+```
+
+You can also customize the classifier in detail by adjusting its parameters. For more options and examples, please consult the
+full API documentation.

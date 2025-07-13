@@ -14,11 +14,11 @@
 [gitter]: <https://gitter.im/scikit-ai/community>
 [gitter badge]: <https://badges.gitter.im/join%20chat.svg>
 [discussions]: <https://github.com/georgedouzas/scikit-ai/discussions>
-[discussions badge]: <https://img.shields.io/github/discussions/scikit-ai/scikit-ai>
+[discussions badge]: <https://img.shields.io/github/discussions/georgedouzas/scikit-ai>
 [ci]: <https://github.com/georgedouzas/scikit-ai/actions?query=workflow>
-[ci badge]: <https://github.com/scikit-ai/scikit-ai/actions/workflows/ci.yml/badge.svg?branch=main>
+[ci badge]: <https://github.com/georgedouzas/scikit-ai/actions/workflows/ci.yml/badge.svg?branch=main>
 [doc]: <https://github.com/georgedouzas/scikit-ai/actions?query=workflow>
-[doc badge]: <https://github.com/scikit-ai/scikit-ai/actions/workflows/doc.yml/badge.svg?branch=main>
+[doc badge]: <https://github.com/georgedouzas/scikit-ai/actions/workflows/doc.yml/badge.svg?branch=main>
 
 # scikit-ai
 

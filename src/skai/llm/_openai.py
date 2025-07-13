@@ -28,6 +28,8 @@ from sklearn.utils.validation import check_is_fitted, validate_data
 
 load_dotenv()
 
+MODELS = [model.id for model in openai.models.list()]
+
 
 class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
     """OpenAI classifier.
@@ -66,6 +68,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
 
     _estimator_type: ClassVar[str] = 'classifier'
     _parameter_constraints: ClassVar[dict] = {
+        'model': [str, None],
         'k_shot': [Interval(Integral, 0, None, closed='left'), 'array-like', None],
         'prompt': [str, None],
         'responses_kwargs': [dict, None],
@@ -81,12 +84,14 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
 
     def __init__(
         self: Self,
+        model: str | None = None,
         k_shot: int | ArrayLike | None = None,
         prompt: str | None = None,
         openai_client: str | openai.OpenAI | openai.AsyncOpenAI | None = None,
         responses_kwargs: dict | None = None,
         classes: dict | np.ndarray | list[np.ndarray] | None = None,
     ) -> None:
+        self.model = model
         self.k_shot = k_shot
         self.prompt = prompt
         self.responses_kwargs = responses_kwargs
@@ -121,6 +126,13 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
                 'string, openai.OpenAI or openai.AsyncOpenAI instance.'
             )
             raise TypeError(error_msg)
+
+    def _validate_model(self: Self) -> str:
+        model = 'gpt-4o-mini' if self.model is None else self.model
+        if model not in MODELS:
+            error_msg = f'Parameter `model` must be one of the following: {MODELS}.'
+            raise ValueError(error_msg)
+        return model
 
     def _validate_responses_kwargs(self: Self) -> dict[str, Any]:
         if self.responses_kwargs is not None:
@@ -257,6 +269,9 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
         # Validate client
         self.openai_client_ = self._validate_openai_client()
 
+        # Validate model
+        self.model_ = self._validate_model()
+
         # Validate responses kwargs
         self.responses_kwargs_ = self._validate_responses_kwargs()
 
@@ -303,7 +318,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
     def _get_api_call_args(self: Self, x: str) -> dict:
         prompt = f'{self.prompt_}\n\nInput: {x}\nOutput:'
         return {
-            'model': 'gpt-3.5-turbo',
+            'model': self.model_,
             'input': prompt,
             'instructions': self.instructions_,
             **self.responses_kwargs_,

@@ -20,12 +20,21 @@ from tests.conftest import (
 
 def test_default_classifier_init() -> None:
     """Tests the initialization with default parameters."""
+    model = None
     k_shot = None
     prompt = None
     openai_client = None
     responses_kwargs = None
     classes = None
-    classifier = OpenAIClassifier()
+    classifier = OpenAIClassifier(
+        model=model,
+        k_shot=k_shot,
+        prompt=prompt,
+        openai_client=openai_client,
+        responses_kwargs=responses_kwargs,
+        classes=classes,
+    )
+    assert classifier.model is model
     assert classifier.k_shot is k_shot
     assert classifier.prompt is prompt
     assert classifier.openai_client is openai_client
@@ -35,12 +44,14 @@ def test_default_classifier_init() -> None:
 
 def test_classifier_init() -> None:
     """Tests the initialization with parameters."""
+    model = 'gpt-3.5-turbo'
     k_shot = 5
     prompt = 'Classify this text into one of these categories'
     openai_client = 'api_key'
     responses_kwargs = {'temperature': 0.7, 'max_tokens': 50}
     classes = np.array(['positive', 'negative', 'neutral'])
     classifier = OpenAIClassifier(
+        model=model,
         k_shot=k_shot,
         prompt=prompt,
         openai_client=openai_client,
@@ -52,6 +63,21 @@ def test_classifier_init() -> None:
     assert classifier.openai_client == openai_client
     assert classifier.responses_kwargs == responses_kwargs
     assert np.array_equal(classifier.classes, classes)
+
+
+@pytest.mark.parametrize('model', [-5, 0.4, []])
+def test_classifier_fit_type_error_model(model) -> None:
+    """Tests the fit method with wrong model value."""
+    classifier = OpenAIClassifier(model=model)
+    with pytest.raises(TypeError, match='The \'model\' parameter of'):
+        classifier.fit(X, y)
+
+
+def test_classifier_fit_error_model() -> None:
+    """Tests the fit method with wrong model value."""
+    classifier = OpenAIClassifier(model='model')
+    with pytest.raises(ValueError, match='Parameter `model` must be one'):
+        classifier.fit(X, y)
 
 
 @pytest.mark.parametrize('k_shot', [-5, 0.4, 'zero', openai.AsyncOpenAI, ['one', 1], []])

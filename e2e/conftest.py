@@ -95,6 +95,18 @@ def shared_images(require_openai_key: None) -> list[Any]:
 
 
 @pytest.fixture(scope='session')
+def shared_speech(require_openai_key: None) -> Any:
+    """Synthesize one sentence of speech once for every test that needs it."""
+    openai = import_optional('openai', 'openai')
+    from skai.generation import SpeechSynthesizer  # noqa: PLC0415 - imported after the credentials are loaded
+
+    with httpx.Client(event_hooks={'response': [Recorder('shared-speech')]}, timeout=TIMEOUT) as http_client:
+        backend = OpenAIBackend(client=openai.OpenAI(http_client=http_client))
+        sentence = 'Good morning, the apple harvest starts today.'
+        return SpeechSynthesizer(backend=backend).fit().predict([sentence])[0]
+
+
+@pytest.fixture(scope='session')
 def video_enabled() -> bool:
     """Return whether the costly video generation tests were requested."""
     return os.environ.get('SKAI_E2E_VIDEO') == '1'

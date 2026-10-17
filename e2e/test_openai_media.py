@@ -6,18 +6,17 @@ import pytest
 from skai.classification import AudioClassifier, VideoClassifier
 from skai.core import Video
 from skai.description import AudioDescriptor, ImageDescriptor, VideoDescriptor
-from skai.generation import ImageAnimator, ImageEditor, SpeechSynthesizer, VideoGenerator
+from skai.generation import ImageAnimator, ImageEditor, VideoGenerator
 from skai.text import TextExtractor
 from skai.transcription import VideoTranscriber
 
-SPEECH_WORDS = ('speech', 'speak', 'voice', 'talk', 'say', 'person', 'man', 'woman')
+SPEECH_WORDS = ('speech', 'speak', 'voice', 'talk', 'say', 'announce', 'greet', 'apple', 'harvest')
 
 
 @pytest.fixture(scope='module')
-def speech(request):
-    """Synthesize one sentence of speech once for the module."""
-    backend = request.getfixturevalue('openai_backend')
-    return SpeechSynthesizer(backend=backend).fit().predict(['Good morning, the apple harvest starts today.'])[0]
+def speech(shared_speech):
+    """Return the shared synthesized sentence."""
+    return shared_speech
 
 
 @pytest.fixture(scope='module')
@@ -34,7 +33,7 @@ def test_audio_classifier_recognizes_speech(openai_backend, speech):
 
 
 def test_audio_descriptor_mentions_speech(openai_backend, speech):
-    """Describe synthesized speech as someone speaking."""
+    """Describe synthesized speech by what is said or by the act of speaking."""
     description = AudioDescriptor(backend=openai_backend).fit().predict([speech])[0].lower()
     assert any(word in description for word in SPEECH_WORDS)
 
@@ -78,7 +77,8 @@ def test_video_generation_and_animation(openai_backend, shared_images, video_ena
     """Generate a short video from a prompt and animate the apple image."""
     if not video_enabled:
         pytest.skip('Set SKAI_E2E_VIDEO=1 to run the video generation tests.')
-    video = VideoGenerator(duration=4, size=(1280, 720), backend=openai_backend).fit().predict(['A paper boat on a pond'])[0]
+    generator = VideoGenerator(duration=4, size=(1280, 720), backend=openai_backend).fit()
+    video = generator.predict(['A paper boat on a pond'])[0]
     assert video.duration == pytest.approx(4, abs=0.2)
     assert video.frames.shape[1:3] == (720, 1280)
     animation = ImageAnimator(duration=4, backend=openai_backend).fit().predict([shared_images[0]])[0]

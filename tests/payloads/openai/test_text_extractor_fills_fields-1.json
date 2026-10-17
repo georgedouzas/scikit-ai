@@ -1,0 +1,61 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You extract information from texts. Answer with one JSON object whose keys are exactly the requested fields. Use null for a field that the text does not contain.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Fields:\n- name: full name of the person\n- city: city of birth\n- year: year of birth\n- pet: pet name\n\nText:\nAda Lovelace was born in London in 1815.",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini",
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "{\"name\":\"Ada Lovelace\",\"city\":\"London\",\"year\":1815,\"pet\":null}",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792270520,
+    "id": "chatcmpl-Ea5iySLY7xQJ3BLxL22nggv0kiVsG",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 158,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 128,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 87,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 245
+    }
+  },
+  "status": 200
+}

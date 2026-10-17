@@ -78,9 +78,9 @@ providers' documented APIs and are verified when credentials or hardware are ava
 
 | Component | `hf` | `openai` | `litellm` |
 |---|---|---|---|
-| `AudioClassifier` | `laion/clap-htsat-unfused` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` |
+| `AudioClassifier` | `laion/clap-htsat-unfused` | `gpt-audio-mini` | `gemini/gemini-2.5-flash` |
 | `VideoClassifier` | `HuggingFaceTB/SmolVLM-256M-Instruct` (frames) | `gpt-5-mini` (frames) | `gemini/gemini-2.5-flash` |
-| `AudioDescriptor` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` |
+| `AudioDescriptor` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-audio-mini` | `gemini/gemini-2.5-flash` |
 | `VideoDescriptor` | `HuggingFaceTB/SmolVLM-256M-Instruct` (frames) | `gpt-5-mini` (frames) | `gemini/gemini-2.5-flash` |
 | `TextExtractor` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` |
 | `ImageEmbedder` | `clip-ViT-B-32` | | `cohere/embed-v4.0` |

@@ -1,0 +1,68 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You are a classifier. Answer with exactly one label from the list of labels and nothing else.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Labels:\n- birdsong\n- music\n- speech\n\nInput: <audio 1>\nOutput:",
+            "type": "text"
+          },
+          {
+            "input_audio": {
+              "data": "<201660 characters>",
+              "format": "wav"
+            },
+            "type": "input_audio"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-audio-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "speech",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792270768,
+    "id": "chatcmpl-Ea5my9vN7hOBGdQK3R45N8zv3Y8nu",
+    "model": "gpt-audio-mini-2025-12-15",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": "fp_6f28079852",
+    "usage": {
+      "completion_tokens": 1,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": 0,
+        "text_tokens": 1
+      },
+      "prompt_tokens": 86,
+      "prompt_tokens_details": {
+        "audio_tokens": 31,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "text_tokens": 55
+      },
+      "total_tokens": 87
+    }
+  },
+  "status": 200
+}

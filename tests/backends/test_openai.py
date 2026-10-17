@@ -1,6 +1,7 @@
 """Test the OpenAI backend against a fake client."""
 
 import base64
+import io
 import json
 
 import numpy as np
@@ -8,7 +9,7 @@ import pytest
 from PIL import Image
 
 from skai.backends import OpenAIBackend
-from skai.classification import ImageClassifier, TextClassifier
+from skai.classification import AudioClassifier, ImageClassifier, TextClassifier, VideoClassifier
 from skai.core import (
     Audio,
     ExtractionRequest,
@@ -16,10 +17,11 @@ from skai.core import (
     InvalidResponseError,
     SampleError,
     UnsupportedBackendError,
+    Video,
 )
-from skai.description import ImageDescriptor
+from skai.description import AudioDescriptor, ImageDescriptor
 from skai.embedding import TextEmbedder
-from skai.generation import ImageGenerator, SpeechSynthesizer
+from skai.generation import ImageAnimator, ImageEditor, ImageGenerator, SpeechSynthesizer, VideoGenerator
 from skai.text import TextSummarizer, TextTranslator
 from skai.transcription import SpeechTranscriber
 from tests.fakes import Recorder, chat_response, install_module, namespace, png_of, round_trip, wav_of
@@ -325,3 +327,88 @@ def test_fine_tuning_keeps_other_errors():
     client.files.create = fail
     with pytest.raises(ConnectionError, match='connection reset'):
         TextSummarizer(adaptation='finetune', backend=OpenAIBackend(client=client)).fit(['t'] * 10, ['s'] * 10)
+
+
+def video_client(statuses, frames=10, size=(1280, 720)):
+    """Return a fake client whose video jobs go through the given statuses and return an MP4."""
+    width, height = size
+    data = Video(np.full((frames * 4, height, width, 3), 90, dtype=np.uint8), fps=frames).to_bytes()
+    client = make_client()
+    jobs = iter([namespace(id='video-1', status=status, error=None) for status in statuses])
+    client.videos = namespace(
+        create=Recorder(lambda **kwargs: next(jobs)),
+        retrieve=Recorder(lambda job_id: next(jobs)),
+        download_content=Recorder(lambda job_id: namespace(read=lambda: data)),
+    )
+    return client
+
+
+def test_audio_tasks_send_audio_parts(audio):
+    """Send audio as an `input_audio` part to the audio model."""
+    client = make_client('siren')
+    classifier = AudioClassifier(labels=['dog', 'siren'], backend=OpenAIBackend(client=client)).fit()
+    assert classifier.predict([audio]).tolist() == ['siren']
+    call = client.chat.completions.create.calls[-1]
+    assert call['model'] == 'gpt-4o-audio-preview'
+    part = call['messages'][1]['content'][-1]
+    assert part['type'] == 'input_audio'
+    assert part['input_audio']['format'] == 'wav'
+    AudioDescriptor(backend=OpenAIBackend(client=client)).fit().predict([audio])
+    assert client.chat.completions.create.calls[-1]['messages'][1]['content'][-1]['type'] == 'input_audio'
+
+
+def test_video_tasks_send_frames_without_audio(audio):
+    """Send the sampled frames as images and leave out the audio track."""
+    client = make_client('cooking')
+    video = Video(np.zeros((20, 8, 8, 3), dtype=np.uint8), fps=10, audio=audio)
+    classifier = VideoClassifier(labels=['cooking', 'sports'], n_frames=4, backend=OpenAIBackend(client=client))
+    classifier.fit().predict([video])
+    parts = client.chat.completions.create.calls[-1]['messages'][1]['content']
+    assert [part['type'] for part in parts] == ['text'] + ['image_url'] * 4
+
+
+def test_image_edits_send_alpha_mask():
+    """Send the image and a mask whose edit region is transparent, and keep the input size."""
+    client = make_client()
+    client.images.edit = Recorder(
+        lambda **kwargs: namespace(data=[namespace(b64_json=base64.b64encode(png_of((16, 16))).decode())]),
+    )
+    mask = Image.new('L', (8, 6), 0)
+    mask.paste(255, (0, 0, 4, 6))
+    editor = ImageEditor(instruction='make it night', mask=mask, backend=OpenAIBackend(client=client)).fit()
+    assert editor.predict([Image.new('RGB', (8, 6))])[0].size == (8, 6)
+    call = client.images.edit.calls[-1]
+    assert call['prompt'] == 'make it night'
+    alpha = Image.open(io.BytesIO(call['mask'][1])).getchannel('A')
+    assert alpha.getpixel((0, 0)) == 0
+    assert alpha.getpixel((7, 0)) == 255
+
+
+def test_video_generation_waits_trims_and_resizes():
+    """Request the closest Sora length and size, wait for the job, then fit the video to the request."""
+    client = video_client(['queued', 'in_progress', 'completed'])
+    generator = VideoGenerator(duration=2, size=(320, 180), backend=OpenAIBackend(client=client, poll_interval=0))
+    video = generator.fit().predict(['a boat'])[0]
+    call = client.videos.create.calls[-1]
+    assert (call['model'], call['seconds'], call['size']) == ('sora-2', '4', '1280x720')
+    assert video.duration == 2.0
+    assert video.frames.shape[1:3] == (180, 320)
+
+
+def test_video_generation_reports_failed_jobs():
+    """Raise a sample error naming the failed video job."""
+    client = video_client(['in_progress', 'failed'])
+    generator = VideoGenerator(backend=OpenAIBackend(client=client, poll_interval=0)).fit()
+    with pytest.raises(SampleError, match='video-1 ended with status `failed`'):
+        generator.predict(['a boat'])
+
+
+def test_animation_sends_image_as_reference():
+    """Send the image, resized to the Sora size, as the input reference."""
+    client = video_client(['completed'], size=(720, 1280))
+    animator = ImageAnimator(duration=1, backend=OpenAIBackend(client=client, poll_interval=0)).fit()
+    video = animator.predict([Image.new('RGB', (90, 160))])[0]
+    call = client.videos.create.calls[-1]
+    assert call['size'] == '720x1280'
+    assert call['input_reference'][0] == 'image.png'
+    assert video.frames.shape[1:3] == (160, 90)

@@ -29,6 +29,22 @@ classifier = ImageClassifier(labels=['cat', 'dog'], backend='dummy').fit()
 print(classifier.predict(images), classifier.predict_proba(images).shape)
 ```
 
+## Audio and videos
+
+`AudioClassifier` labels sounds, music or speech, and `VideoClassifier` labels videos from `n_frames` frames sampled
+evenly over each one, with the audio track on backends that accept audio.
+
+```python exec="true" source="above" result="text"
+import numpy as np
+from skai.classification import AudioClassifier, VideoClassifier
+from skai.core import Video
+
+audio = [(np.zeros(16000, dtype=np.float32), 16000)]
+print(AudioClassifier(labels=['dog bark', 'siren'], backend='dummy').fit().predict(audio))
+video = Video(np.zeros((20, 8, 8, 3), dtype=np.uint8), fps=10)
+print(VideoClassifier(labels=['cooking', 'sports'], n_frames=4, backend='dummy').fit().predict([video]))
+```
+
 ## What fit learns
 
 With targets, a classifier learns `classes_` and passes `examples_` to the backend: one example per class by default,

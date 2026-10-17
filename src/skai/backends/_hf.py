@@ -11,9 +11,12 @@ from numpy.typing import NDArray
 from PIL import Image
 
 from skai.core import (
+    AnimationRequest,
     Audio,
     ClassificationRequest,
+    DescriptionRequest,
     EmbeddingRequest,
+    ImageEditRequest,
     ImageGenerationRequest,
     Prompt,
     PromptedBackend,
@@ -21,6 +24,8 @@ from skai.core import (
     SpeechRequest,
     Transcript,
     TranscriptionRequest,
+    Video,
+    VideoGenerationRequest,
     build_image_prompt,
     import_optional,
 )
@@ -28,8 +33,27 @@ from skai.core import (
 CHAT_MODEL = 'Qwen/Qwen2.5-1.5B-Instruct'
 VISION_MODEL = 'HuggingFaceTB/SmolVLM-256M-Instruct'
 IMAGE_MODEL = 'stabilityai/sd-turbo'
+CLAP_MODEL = 'laion/clap-htsat-unfused'
+CLAP_SAMPLE_RATE = 48000
+WAN_FPS = 16
+SVD_FPS = 7
+SVD_SIZE = (1024, 576)
+AUDIO_INSTRUCTIONS = {
+    'brief': 'Describe the sounds in this audio in one sentence.',
+    'detailed': 'Describe the sounds, music and speech in this audio in one detailed paragraph.',
+}
 TURBO_OPTIONS = {'num_inference_steps': 1, 'guidance_scale': 0.0}
 RETURN_TIMESTAMPS: dict[str | None, bool | str] = {None: False, 'segment': True, 'word': 'word'}
+
+
+def _to_frames(frames: Any) -> NDArray[np.uint8]:
+    """Turn the frames of a diffusion pipeline, PIL images or float arrays, into RGB `uint8` frames."""
+    stacked = np.stack(
+        [np.asarray(frame.convert('RGB')) if isinstance(frame, Image.Image) else np.asarray(frame) for frame in frames],
+    )
+    if stacked.dtype != np.uint8:
+        stacked = (np.clip(stacked, 0, 1) * 255).round().astype(np.uint8)
+    return stacked
 
 
 def _to_segments(chunks: list[dict[str, Any]], duration: float) -> tuple[Segment, ...]:
@@ -76,6 +100,16 @@ class HFBackend(PromptedBackend):
         'synthesize_speech': 'facebook/mms-tts-eng',
         'generate_image': IMAGE_MODEL,
         'transcribe': 'openai/whisper-small',
+        'classify_audio': CLAP_MODEL,
+        'describe_audio': 'Qwen/Qwen2-Audio-7B-Instruct',
+        'classify_video': VISION_MODEL,
+        'describe_video': VISION_MODEL,
+        'extract_fields': CHAT_MODEL,
+        'embed_image': 'clip-ViT-B-32',
+        'embed_audio': CLAP_MODEL,
+        'generate_video': 'Wan-AI/Wan2.1-T2V-1.3B-Diffusers',
+        'edit_image': 'timbrooks/instruct-pix2pix',
+        'animate_image': 'stabilityai/stable-video-diffusion-img2vid-xt',
     }
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
     accepts_context: ClassVar[bool] = True
@@ -105,6 +139,30 @@ class HFBackend(PromptedBackend):
         """Return the cached `transformers` pipeline of a task and a model."""
         transformers = import_optional('transformers', 'hf')
         return self._load((task, model), lambda: transformers.pipeline(task, model=model, device=self.device))
+
+    def _load_diffusion(self, task: str, class_name: str) -> Any:
+        """Return the cached diffusion pipeline of a task, on the backend's device."""
+        diffusers = import_optional('diffusers', 'hf')
+        model = self.resolve_model(task)
+        return self._load(
+            (task, model),
+            lambda: getattr(diffusers, class_name).from_pretrained(model).to(self.device or 'cpu'),
+        )
+
+    def _generator(self, seed: int | None) -> Any:
+        """Return a seeded torch generator, or `None` without a seed."""
+        torch = import_optional('torch', 'hf')
+        return None if seed is None else torch.Generator().manual_seed(seed)
+
+    def _encode_audio(self, audio: Audio) -> NDArray[np.floating]:
+        """Embed audio with the CLAP model of the audio embedding task."""
+        transformers = import_optional('transformers', 'hf')
+        model = self.resolve_model('embed_audio')
+        processor = self._load(('clap-processor', model), lambda: transformers.ClapProcessor.from_pretrained(model))
+        clap = self._load(('clap-model', model), lambda: transformers.ClapModel.from_pretrained(model))
+        samples = audio.resample(CLAP_SAMPLE_RATE).samples
+        inputs = processor(audios=samples, sampling_rate=CLAP_SAMPLE_RATE, return_tensors='pt')
+        return clap.get_audio_features(**inputs)[0].detach().cpu().numpy()
 
     def connect(self) -> 'HFBackend':
         """Check that the `hf` extra is installed.
@@ -218,14 +276,9 @@ class HFBackend(PromptedBackend):
         Returns:
             The image.
         """
-        diffusers = import_optional('diffusers', 'hf')
-        torch = import_optional('torch', 'hf')
         model = self.resolve_model('generate_image')
-        pipeline = self._load(
-            ('generate_image', model),
-            lambda: diffusers.AutoPipelineForText2Image.from_pretrained(model).to(self.device or 'cpu'),
-        )
-        generator = None if request.seed is None else torch.Generator().manual_seed(request.seed)
+        pipeline = self._load_diffusion('generate_image', 'AutoPipelineForText2Image')
+        generator = self._generator(request.seed)
         width, height = request.size
         output = pipeline(
             prompt=build_image_prompt(request),
@@ -263,3 +316,152 @@ class HFBackend(PromptedBackend):
         )
         segments = _to_segments(output.get('chunks', []), audio.duration) if request.timestamps else ()
         return Transcript(output['text'].strip(), segments)
+
+    def classify_audio(self, request: ClassificationRequest) -> dict[str, float]:
+        """Score audio with a zero-shot audio classification model.
+
+        Label descriptions are used as the candidate labels when they are given.
+
+        Args:
+            request:
+                The classification request.
+
+        Returns:
+            A score per label.
+        """
+        assert isinstance(request.sample, Audio)
+        candidates = [request.descriptions.get(label, label) for label in request.labels]
+        pipeline = self._pipeline('zero-shot-audio-classification', self.resolve_model('classify_audio'))
+        samples = request.sample.resample(CLAP_SAMPLE_RATE).samples
+        scores = {item['label']: item['score'] for item in pipeline(samples, candidate_labels=candidates)}
+        return {label: float(scores[candidate]) for label, candidate in zip(request.labels, candidates, strict=True)}
+
+    def describe_audio(self, request: DescriptionRequest) -> str:
+        """Describe audio with an audio-language model.
+
+        Examples of the request are not used.
+
+        Args:
+            request:
+                The description request.
+
+        Returns:
+            The description.
+        """
+        assert isinstance(request.sample, Audio)
+        transformers = import_optional('transformers', 'hf')
+        model = self.resolve_model('describe_audio')
+        processor = self._load(('audio-processor', model), lambda: transformers.AutoProcessor.from_pretrained(model))
+        audio_class = transformers.Qwen2AudioForConditionalGeneration
+        language_model = self._load(
+            ('audio-model', model),
+            lambda: audio_class.from_pretrained(model, device_map=self.device or 'auto'),
+        )
+        extra = f' {request.instructions}' if request.instructions else ''
+        instructions = AUDIO_INSTRUCTIONS[request.detail] + extra
+        content = [{'type': 'audio', 'audio_url': 'sample'}, {'type': 'text', 'text': instructions}]
+        conversation = [{'role': 'user', 'content': content}]
+        text = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+        rate = processor.feature_extractor.sampling_rate
+        samples = [request.sample.resample(rate).samples]
+        inputs = processor(text=text, audio=samples, sampling_rate=rate, return_tensors='pt')
+        output = language_model.generate(**inputs, max_new_tokens=self.max_new_tokens)
+        generated = output[:, inputs['input_ids'].shape[1] :]
+        return processor.batch_decode(generated, skip_special_tokens=True)[0].strip()
+
+    def embed_image(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Embed an image with a CLIP model of sentence-transformers.
+
+        Args:
+            request:
+                The embedding request.
+
+        Returns:
+            The embedding vector.
+        """
+        sentence_transformers = import_optional('sentence_transformers', 'hf')
+        model = self.resolve_model('embed_image')
+        encoder = self._load(
+            ('embed_image', model),
+            lambda: sentence_transformers.SentenceTransformer(model, device=self.device),
+        )
+        return np.asarray(encoder.encode([request.sample], **self.call_options)[0])
+
+    def embed_audio(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Embed audio with a CLAP model.
+
+        Args:
+            request:
+                The embedding request.
+
+        Returns:
+            The embedding vector.
+        """
+        assert isinstance(request.sample, Audio)
+        return np.asarray(self._encode_audio(request.sample))
+
+    def generate_video(self, request: VideoGenerationRequest) -> Video:
+        """Generate a video with a text-to-video diffusion model.
+
+        Args:
+            request:
+                The video generation request.
+
+        Returns:
+            The video, at `fps` or 16 frames per second.
+        """
+        pipeline = self._load_diffusion('generate_video', 'DiffusionPipeline')
+        fps = request.fps or WAN_FPS
+        width, height = request.size
+        output = pipeline(
+            prompt=build_image_prompt(ImageGenerationRequest(request.prompt, request.size, request.style)),
+            negative_prompt=request.negative_prompt,
+            width=width,
+            height=height,
+            num_frames=4 * max(1, round(request.duration * fps / 4)) + 1,
+            generator=self._generator(request.seed),
+            **self.call_options,
+        )
+        return Video(_to_frames(output.frames[0]), fps)
+
+    def edit_image(self, request: ImageEditRequest) -> Image.Image:
+        """Edit an image with an instruction-following diffusion model.
+
+        Args:
+            request:
+                The image edit request.
+
+        Returns:
+            The edited image, of the size of the input.
+        """
+        pipeline = self._load_diffusion('edit_image', 'StableDiffusionInstructPix2PixPipeline')
+        output = pipeline(
+            prompt=request.instruction,
+            image=request.image.convert('RGB'),
+            generator=self._generator(request.seed),
+            **self.call_options,
+        )
+        edited = output.images[0]
+        return edited if edited.size == request.image.size else edited.resize(request.image.size)
+
+    def animate_image(self, request: AnimationRequest) -> Video:
+        """Animate an image with an image-to-video diffusion model.
+
+        The motion prompt is not used.
+
+        Args:
+            request:
+                The animation request.
+
+        Returns:
+            The video, resized to the size of the image.
+        """
+        pipeline = self._load_diffusion('animate_image', 'StableVideoDiffusionPipeline')
+        fps = request.fps or SVD_FPS
+        output = pipeline(
+            request.image.convert('RGB').resize(SVD_SIZE),
+            num_frames=max(1, round(request.duration * fps)),
+            generator=self._generator(request.seed),
+            **self.call_options,
+        )
+        return Video(_to_frames(output.frames[0]), fps).resize(request.image.size)

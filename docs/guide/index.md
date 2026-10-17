@@ -49,5 +49,6 @@ Every component takes the same execution parameters:
 - [Backends](backends.md) explains how to choose and configure where components run.
 - [Classification](classification.md), [description](description.md), [transcription](transcription.md),
   [text](text.md), [embedding](embedding.md) and [generation](generation.md) describe every component.
+- [Pipelines](pipelines.md) shows the chains of components that the library supports.
 - [What fit learns](fit.md) explains learning from data, `use_y` in pipelines, and fine-tuning.
 - [Migrating from 0.1](migration.md) maps the removed `OpenAIClassifier` to `TextClassifier`.

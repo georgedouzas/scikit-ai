@@ -11,6 +11,7 @@ from typing import Any, Self
 import numpy as np
 import soundfile as sf
 from numpy.typing import NDArray
+from PIL import Image
 
 from ._utils import import_optional
 
@@ -129,6 +130,23 @@ class Audio:
             return self
         return Audio(self.samples.mean(axis=1), self.sample_rate)
 
+    def resample(self, sample_rate: int) -> 'Audio':
+        """Return the audio mixed to mono and resampled by linear interpolation.
+
+        Args:
+            sample_rate:
+                The new number of samples per second.
+
+        Returns:
+            The resampled mono audio, or the mono audio itself when the rate is unchanged.
+        """
+        mono = self.to_mono()
+        if mono.sample_rate == sample_rate:
+            return mono
+        times = np.arange(round(mono.duration * sample_rate)) / sample_rate
+        source_times = np.arange(mono.samples.shape[0]) / mono.sample_rate
+        return Audio(np.interp(times, source_times, mono.samples).astype(np.float32), sample_rate)
+
     def to_bytes(self) -> bytes:
         """Encode the audio as WAV bytes.
 
@@ -236,6 +254,39 @@ class Video:
     def duration(self) -> float:
         """The length of the video in seconds."""
         return self.frames.shape[0] / self.fps
+
+    def resize(self, size: tuple[int, int]) -> 'Video':
+        """Return a copy whose frames are resized to a width and height.
+
+        Args:
+            size:
+                The width and height in pixels.
+
+        Returns:
+            The resized video, or the video itself when it already has that size.
+        """
+        if (self.frames.shape[2], self.frames.shape[1]) == tuple(size):
+            return self
+        frames = np.stack([np.asarray(Image.fromarray(frame).resize(size)) for frame in self.frames])
+        return Video(frames, self.fps, self.audio)
+
+    def trim(self, seconds: float) -> 'Video':
+        """Return a copy cut to at most a number of seconds.
+
+        Args:
+            seconds:
+                The maximum length in seconds.
+
+        Returns:
+            The trimmed video, or the video itself when it is not longer.
+        """
+        if self.duration <= seconds:
+            return self
+        frames = self.frames[: max(1, round(seconds * self.fps))]
+        audio = self.audio
+        if audio is not None:
+            audio = Audio(audio.samples[: round(seconds * audio.sample_rate)], audio.sample_rate)
+        return Video(frames, self.fps, audio)
 
     def audio_track(self) -> Audio:
         """Return the audio track mixed to mono, or silence as long as the video when it has no track.

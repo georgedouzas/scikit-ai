@@ -266,10 +266,14 @@ class ExtractionRequest:
 
         fields:
             The field names and their descriptions, in output order.
+
+        examples:
+            Example pairs of a text and its reference record.
     """
 
     text: str
     fields: tuple[tuple[str, str], ...]
+    examples: tuple[tuple[str, dict[str, Any]], ...] = ()
 
 
 @dataclass(frozen=True)

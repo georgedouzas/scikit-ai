@@ -13,6 +13,23 @@ pipeline.fit(['cheap', 'expensive', 'bargain', 'luxury'], [0, 1, 0, 1])
 print(pipeline.predict(['affordable']))
 ```
 
+## Images and audio
+
+`ImageEmbedder` and `AudioEmbedder` map images and audio to vectors with the same parameters as `TextEmbedder`. With
+the same joint text and image model in `TextEmbedder` and `ImageEmbedder`, such as `'hf:clip-ViT-B-32'`, the
+vectors share one space, so texts can retrieve images with `NearestNeighbors`.
+
+```python exec="true" source="above" result="text"
+from PIL import Image
+from sklearn.neighbors import NearestNeighbors
+from skai.embedding import ImageEmbedder, TextEmbedder
+
+images = [Image.new('RGB', (16, 16), color) for color in ('red', 'green', 'blue')]
+gallery = ImageEmbedder(normalize=True, center=False, backend='dummy:joint').fit().transform(images)
+query = TextEmbedder(normalize=True, center=False, backend='dummy:joint').fit().transform(['a green square'])
+print(NearestNeighbors(n_neighbors=2).fit(gallery).kneighbors(query, return_distance=False))
+```
+
 ## What fit learns
 
 `fit(X)` embeds the texts and learns their mean `mean_`, which is subtracted from every embedding when `center=True`.

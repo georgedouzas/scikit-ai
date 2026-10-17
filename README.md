@@ -85,15 +85,17 @@ with its input type, except generators, which are named for what they generate.
 
 | Module | Component | Does | Output |
 |---|---|---|---|
-| `skai.classification` | `TextClassifier` | assigns labels to texts, zero-shot or few-shot | labels and probabilities |
-| `skai.classification` | `ImageClassifier` | assigns labels to images, zero-shot or few-shot | labels and probabilities |
-| `skai.description` | `ImageDescriptor` | describes images | text |
-| `skai.transcription` | `SpeechTranscriber` | transcribes speech, optionally with timestamps | text or timed records |
+| `skai.classification` | `TextClassifier`, `ImageClassifier`, `AudioClassifier`, `VideoClassifier` | assign labels, zero-shot or few-shot | labels and probabilities |
+| `skai.description` | `ImageDescriptor`, `AudioDescriptor`, `VideoDescriptor` | describe media in natural language | text |
+| `skai.transcription` | `SpeechTranscriber`, `VideoTranscriber` | transcribe speech, optionally with timestamps | text or timed records |
 | `skai.text` | `TextSummarizer` | summarizes texts | text |
 | `skai.text` | `TextTranslator` | translates texts | text |
-| `skai.embedding` | `TextEmbedder` | maps texts to vectors | float array |
+| `skai.text` | `TextExtractor` | extracts named fields | records or columns |
+| `skai.embedding` | `TextEmbedder`, `ImageEmbedder`, `AudioEmbedder` | map samples to vectors | float array |
 | `skai.generation` | `SpeechSynthesizer` | speaks texts, optionally in a cloned voice | audio |
-| `skai.generation` | `ImageGenerator` | generates images from prompts | images |
+| `skai.generation` | `ImageGenerator`, `VideoGenerator` | generate images or videos from prompts | images or videos |
+| `skai.generation` | `ImageEditor` | applies an instruction to images | images |
+| `skai.generation` | `ImageAnimator` | turns images into short videos | videos |
 | `skai.generation` | `TalkingAvatarGenerator` | animates a portrait so that it speaks the audio | video |
 
 ## What fit learns
@@ -172,8 +174,8 @@ it, components run an open-source model.
 | Provider | Backend | Runs | Install | Tasks |
 |---|---|---|---|---|
 | `hf` | `HFBackend` | locally, open-source models | `scikit-ai[hf]` | every task except talking avatars |
-| `openai` | `OpenAIBackend` | OpenAI API | `scikit-ai[openai]` | every task except talking avatars |
-| `litellm` | `LiteLLMBackend` | Anthropic, Gemini, Mistral, Bedrock, Azure, Ollama and others through LiteLLM | `scikit-ai[litellm]` | classification, summarization, translation, image description, embeddings |
+| `openai` | `OpenAIBackend` | OpenAI API | `scikit-ai[openai]` | every task except talking avatars and image and audio embeddings |
+| `litellm` | `LiteLLMBackend` | Anthropic, Gemini, Mistral, Bedrock, Azure, Ollama and others through LiteLLM | `scikit-ai[litellm]` | classification, description, summarization, translation, extraction, text and image embeddings |
 | `replicate` | `ReplicateBackend` | open-source models hosted by Replicate | `scikit-ai[replicate]` | talking avatars, image generation, speech synthesis with voice cloning |
 | `dummy` | `DummyBackend` | locally, no model | included | every task, with placeholder outputs for tests and documentation |
 <!-- --8<-- [end:providers] -->
@@ -193,6 +195,17 @@ The default model of every component and provider:
 | `ImageClassifier` | `hf` | `openai/clip-vit-base-patch32` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
 | `SpeechTranscriber` | `hf` | `openai/whisper-small` | `whisper-1` | | |
 | `TalkingAvatarGenerator` | `replicate` | | | | `cjwbw/sadtalker` |
+| `AudioClassifier` | `hf` | `laion/clap-htsat-unfused` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` | |
+| `VideoClassifier` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `gemini/gemini-2.5-flash` | |
+| `AudioDescriptor` | `hf` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` | |
+| `VideoDescriptor` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `gemini/gemini-2.5-flash` | |
+| `VideoTranscriber` | `hf` | `openai/whisper-small` | `whisper-1` | | |
+| `TextExtractor` | `hf` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
+| `ImageEmbedder` | `hf` | `clip-ViT-B-32` | | `cohere/embed-v4.0` | |
+| `AudioEmbedder` | `hf` | `laion/clap-htsat-unfused` | | | |
+| `VideoGenerator` | `hf` | `Wan-AI/Wan2.1-T2V-1.3B-Diffusers` | `sora-2` | | |
+| `ImageEditor` | `hf` | `timbrooks/instruct-pix2pix` | `gpt-image-1` | | |
+| `ImageAnimator` | `hf` | `stabilityai/stable-video-diffusion-img2vid-xt` | `sora-2` | | |
 <!-- --8<-- [end:defaults] -->
 
 Cloud backends read credentials from environment variables, such as `OPENAI_API_KEY` or `REPLICATE_API_TOKEN`, and

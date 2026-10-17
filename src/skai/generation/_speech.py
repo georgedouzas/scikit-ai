@@ -29,10 +29,7 @@ def _join_recordings(recordings: list[Audio]) -> Audio:
     gap = np.zeros(round(JOIN_GAP_SECONDS * rate), dtype=np.float32)
     parts = []
     for recording in recordings:
-        mono = recording.to_mono()
-        times = np.arange(round(mono.duration * rate)) / rate
-        source_times = np.arange(mono.samples.shape[0]) / mono.sample_rate
-        parts += [np.interp(times, source_times, mono.samples).astype(np.float32), gap]
+        parts += [recording.resample(rate).samples.astype(np.float32), gap]
     samples = np.concatenate(parts[:-1])[: round(MAX_VOICE_SECONDS * rate)]
     return Audio(samples, rate)
 

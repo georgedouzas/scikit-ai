@@ -3,7 +3,6 @@
 import re
 
 import numpy as np
-import pytest
 from sklearn.pipeline import make_pipeline
 
 from skai.classification import ImageClassifier, TextClassifier
@@ -85,9 +84,3 @@ def test_embeddings_rank_paraphrases_first(openai_backend):
     similarities = vectors @ vectors[0]
     assert similarities[1] > similarities[2]
 
-
-def test_video_generation(video_enabled):
-    """Generate a short video, once `VideoGenerator` exists."""
-    if not video_enabled:
-        pytest.skip('Set SKAI_E2E_VIDEO=1 to run the video generation tests.')
-    pytest.skip('VideoGenerator is implemented in group 6 of add-roadmap-components.')

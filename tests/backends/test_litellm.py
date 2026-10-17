@@ -5,11 +5,11 @@ import pytest
 from PIL import Image
 
 from skai.backends import LiteLLMBackend
-from skai.classification import TextClassifier
-from skai.core import MissingCredentialError
+from skai.classification import AudioClassifier, TextClassifier, VideoClassifier
+from skai.core import MissingCredentialError, Video
 from skai.description import ImageDescriptor
-from skai.embedding import TextEmbedder
-from skai.text import TextSummarizer
+from skai.embedding import ImageEmbedder, TextEmbedder
+from skai.text import TextExtractor, TextSummarizer
 from tests.fakes import Recorder, chat_response, install_module, namespace, round_trip
 
 
@@ -62,3 +62,31 @@ def test_unpickled_backend_imports_module_again(litellm):
     """Import LiteLLM again on first use after unpickling."""
     summarizer = round_trip(TextSummarizer(backend='litellm').fit())
     assert summarizer.predict(['text'])[0] == 'cat'
+
+
+def test_media_tasks_send_audio_and_frames(litellm, audio):
+    """Send audio parts and video frames with their audio track to the default media model."""
+    AudioClassifier(labels=['cat', 'dog'], backend='litellm').fit().predict([audio])
+    call = litellm.completion.calls[-1]
+    assert call['model'] == 'gemini/gemini-2.5-flash'
+    assert call['messages'][1]['content'][-1]['type'] == 'input_audio'
+    video = Video(np.zeros((10, 4, 4, 3), dtype=np.uint8), fps=5, audio=audio)
+    VideoClassifier(labels=['cat', 'dog'], n_frames=2, backend='litellm').fit().predict([video])
+    types = [part['type'] for part in litellm.completion.calls[-1]['messages'][1]['content']]
+    assert types == ['text', 'image_url', 'image_url', 'input_audio']
+
+
+def test_extraction_uses_json_mode(litellm, monkeypatch):
+    """Ask for a JSON object and read it into the fields."""
+    monkeypatch.setattr(litellm, 'completion', Recorder(lambda **kwargs: chat_response('{"name": "Ada"}')))
+    records = TextExtractor(fields={'name': 'person name'}, backend='litellm').fit().predict(['Ada.'])
+    assert records.tolist() == [{'name': 'Ada'}]
+    assert litellm.completion.calls[-1]['response_format'] == {'type': 'json_object'}
+
+
+def test_image_embeddings_send_data_urls(litellm):
+    """Embed images as data URLs with the multimodal embedding model."""
+    ImageEmbedder(backend='litellm').fit().transform([Image.new('RGB', (4, 4))])
+    call = litellm.embedding.calls[-1]
+    assert call['model'] == 'cohere/embed-v4.0'
+    assert call['input'][0].startswith('data:image/png;base64,')

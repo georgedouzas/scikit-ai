@@ -7,10 +7,20 @@ from typing import Any, ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
+from PIL import Image
 
-from skai.core import EmbeddingRequest, Prompt, PromptedBackend, import_optional, read_env, to_data_url
+from skai.core import (
+    EmbeddingRequest,
+    Prompt,
+    PromptedBackend,
+    import_optional,
+    read_env,
+    to_chat_messages,
+    to_data_url,
+)
 
 CHAT_MODEL = 'anthropic/claude-haiku-5-5'
+MEDIA_MODEL = 'gemini/gemini-2.5-flash'
 
 
 class LiteLLMBackend(PromptedBackend):
@@ -44,7 +54,15 @@ class LiteLLMBackend(PromptedBackend):
         'describe_image': CHAT_MODEL,
         'classify_image': CHAT_MODEL,
         'embed_text': 'openai/text-embedding-3-small',
+        'classify_audio': MEDIA_MODEL,
+        'describe_audio': MEDIA_MODEL,
+        'classify_video': MEDIA_MODEL,
+        'describe_video': MEDIA_MODEL,
+        'extract_fields': CHAT_MODEL,
+        'embed_image': 'cohere/embed-v4.0',
     }
+    accepts_audio: ClassVar[bool] = True
+    sends_video_audio: ClassVar[bool] = True
 
     shortens_embeddings: ClassVar[bool] = True
 
@@ -96,11 +114,28 @@ class LiteLLMBackend(PromptedBackend):
         Returns:
             The answer of the model.
         """
-        content: list[dict[str, Any]] = [{'type': 'text', 'text': prompt.user}]
-        content += [{'type': 'image_url', 'image_url': {'url': to_data_url(image)}} for image in prompt.images]
-        messages = [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
-        response = self._litellm.completion(model=model, messages=messages, **self._credentials(), **self.call_options)
+        options = {'response_format': {'type': 'json_object'}} if prompt.json_output else {}
+        response = self._litellm.completion(
+            model=model,
+            messages=to_chat_messages(prompt),
+            **options,
+            **self._credentials(),
+            **self.call_options,
+        )
         return response.choices[0].message.content or ''
+
+    def _embed(self, task: str, sample: str, dimensions: int | None) -> NDArray[np.floating]:
+        """Embed one text or data URL with the embedding model of a task."""
+        options = {'dimensions': dimensions} if dimensions else {}
+        response = self._litellm.embedding(
+            model=self.resolve_model(task),
+            input=[sample],
+            **options,
+            **self._credentials(),
+            **self.call_options,
+        )
+        item = response.data[0]
+        return np.asarray(item['embedding'] if isinstance(item, dict) else item.embedding)
 
     def embed_text(self, request: EmbeddingRequest) -> NDArray[np.floating]:
         """Embed a text with an embedding model.
@@ -112,13 +147,17 @@ class LiteLLMBackend(PromptedBackend):
         Returns:
             The embedding vector.
         """
-        dimensions = {'dimensions': request.dimensions} if request.dimensions else {}
-        response = self._litellm.embedding(
-            model=self.resolve_model('embed_text'),
-            input=[request.sample],
-            **dimensions,
-            **self._credentials(),
-            **self.call_options,
-        )
-        item = response.data[0]
-        return np.asarray(item['embedding'] if isinstance(item, dict) else item.embedding)
+        return self._embed('embed_text', str(request.sample), request.dimensions)
+
+    def embed_image(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Embed an image, sent as a data URL, with a multimodal embedding model.
+
+        Args:
+            request:
+                The embedding request.
+
+        Returns:
+            The embedding vector.
+        """
+        assert isinstance(request.sample, Image.Image)
+        return self._embed('embed_image', to_data_url(request.sample), request.dimensions)

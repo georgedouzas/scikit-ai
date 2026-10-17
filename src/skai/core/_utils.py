@@ -5,7 +5,10 @@
 
 import importlib
 import os
+from numbers import Integral
 from types import ModuleType
+
+from sklearn.utils._param_validation import InvalidParameterError
 
 from ._errors import MissingCredentialError, MissingExtraError
 
@@ -32,6 +35,36 @@ def import_optional(module: str, extra: str) -> ModuleType:
     except ModuleNotFoundError as error:
         msg = f'Module `{module}` is required. Install it with `pip install scikit-ai[{extra}]`.'
         raise MissingExtraError(msg) from error
+
+
+SIZE_LENGTH = 2
+
+
+def check_size(size: object, owner: str) -> tuple[int, int]:
+    """Check that a size parameter is a pair of positive integers.
+
+    Args:
+        size:
+            The value of the `size` parameter.
+
+        owner:
+            The name of the component, used in the error message.
+
+    Returns:
+        The width and height.
+
+    Raises:
+        InvalidParameterError:
+            If the size is not a `(width, height)` pair of positive integers.
+    """
+    if not (
+        isinstance(size, tuple)
+        and len(size) == SIZE_LENGTH
+        and all(isinstance(side, Integral) and int(side) > 0 for side in size)
+    ):
+        msg = f'The `size` parameter of {owner} must be a (width, height) pair of positive integers. Got {size}.'
+        raise InvalidParameterError(msg)
+    return int(size[0]), int(size[1])
 
 
 def read_env(name: str) -> str:

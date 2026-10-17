@@ -3,11 +3,8 @@
 # Author: Georgios Douzas <gdouzas@icloud.com>
 # License: MIT
 
-from numbers import Integral
 from os import PathLike
 from typing import ClassVar, Literal
-
-from sklearn.utils._param_validation import InvalidParameterError
 
 from skai.core import (
     Backend,
@@ -15,11 +12,11 @@ from skai.core import (
     DescriptionRequest,
     ImageGenerationRequest,
     UnsupportedBackendError,
+    check_size,
     list_backends,
     read_image,
 )
 
-SIZE_LENGTH = 2
 STYLE_INSTRUCTIONS = (
     'Describe only the visual style in one sentence, such as medium, palette and lighting, not the content.'
 )
@@ -112,13 +109,8 @@ class ImageGenerator(BaseMediaGenerator):
         self.random_state = random_state
 
     def _prepare(self) -> None:
-        """Check that `size` holds a positive width and height."""
-        if len(self.size) != SIZE_LENGTH or not all(isinstance(side, Integral) and side > 0 for side in self.size):
-            msg = (
-                'The `size` parameter of ImageGenerator must be a (width, height) pair of positive integers. '
-                f'Got {self.size}.'
-            )
-            raise InvalidParameterError(msg)
+        """Check the size and learn the style of the reference images."""
+        check_size(self.size, type(self).__name__)
         self.style_ = self._learn_style()
 
     def _learn_style(self) -> str | None:

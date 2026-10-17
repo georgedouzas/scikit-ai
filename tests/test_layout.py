@@ -12,12 +12,19 @@ import skai.text
 import skai.transcription
 
 LAYOUT = {
-    skai.classification: ['ImageClassifier', 'TextClassifier'],
-    skai.description: ['ImageDescriptor'],
-    skai.transcription: ['SpeechTranscriber'],
-    skai.text: ['TextSummarizer', 'TextTranslator'],
-    skai.embedding: ['TextEmbedder'],
-    skai.generation: ['ImageGenerator', 'SpeechSynthesizer', 'TalkingAvatarGenerator'],
+    skai.classification: ['AudioClassifier', 'ImageClassifier', 'TextClassifier', 'VideoClassifier'],
+    skai.description: ['AudioDescriptor', 'ImageDescriptor', 'VideoDescriptor'],
+    skai.transcription: ['SpeechTranscriber', 'VideoTranscriber'],
+    skai.text: ['TextExtractor', 'TextSummarizer', 'TextTranslator'],
+    skai.embedding: ['AudioEmbedder', 'ImageEmbedder', 'TextEmbedder'],
+    skai.generation: [
+        'ImageAnimator',
+        'ImageEditor',
+        'ImageGenerator',
+        'SpeechSynthesizer',
+        'TalkingAvatarGenerator',
+        'VideoGenerator',
+    ],
 }
 INPUT_TYPES = ('Text', 'Image', 'Speech', 'Audio', 'Video')
 

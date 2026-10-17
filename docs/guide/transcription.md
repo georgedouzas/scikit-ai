@@ -14,6 +14,22 @@ print(SpeechTranscriber(backend='dummy').fit().predict([audio]))
 print(SpeechTranscriber(timestamps='segment', backend='dummy').fit().predict([audio])[0])
 ```
 
+## Videos
+
+`VideoTranscriber` transcribes the audio track of every video, with the parameters and outputs of
+`SpeechTranscriber`. Timestamps are measured from the start of the video, and a video without an audio track gives
+an empty transcript without calling the backend.
+
+```python exec="true" source="above" result="text"
+import numpy as np
+from skai.core import Audio, Video
+from skai.transcription import VideoTranscriber
+
+speaking = Video(np.zeros((20, 8, 8, 3), dtype=np.uint8), fps=10, audio=Audio(np.zeros(32000), 16000))
+silent = Video(np.zeros((20, 8, 8, 3), dtype=np.uint8), fps=10)
+print(VideoTranscriber(backend='dummy').fit().predict([speaking, silent]))
+```
+
 ## What fit learns
 
 `fit(X, y)` with reference transcripts as `y` learns `vocabulary_`, the names, products and technical terms of the

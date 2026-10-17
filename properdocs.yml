@@ -33,6 +33,7 @@ nav:
     - Text: guide/text.md
     - Embedding: guide/embedding.md
     - Generation: guide/generation.md
+    - Pipelines: guide/pipelines.md
     - Migrating from 0.1: guide/migration.md
   - API: api/
   - Examples: generated/gallery

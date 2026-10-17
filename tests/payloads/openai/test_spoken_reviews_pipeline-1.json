@@ -2,7 +2,7 @@
   "method": "POST",
   "path": "/v1/audio/speech",
   "request": {
-    "input": "I am thrilled with this purchase.",
+    "input": "This was a complete waste of money.",
     "model": "gpt-4o-mini-tts",
     "response_format": "wav",
     "voice": "alloy"

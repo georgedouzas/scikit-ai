@@ -31,7 +31,7 @@ read or decoded raises `skai.core.MediaReadError`, a `ValueError`. Both name the
 ```python exec="true" source="above" result="text"
 import numpy as np
 from PIL import Image
-from skai.image import ImageDescriptor
+from skai.description import ImageDescriptor
 
 descriptor = ImageDescriptor(backend='dummy').fit()
 print(descriptor.predict([Image.new('RGB', (64, 48)), np.zeros((16, 16), dtype=np.uint8)]))
@@ -55,7 +55,7 @@ With `output_format='path'`, every output is written to a new file in `output_di
 
 ```python exec="true" source="above" result="text"
 import tempfile
-from skai.text import ImageGenerator
+from skai.generation import ImageGenerator
 
 generator = ImageGenerator(size=(64, 64), output_format='path', output_dir=tempfile.mkdtemp(), backend='dummy')
 paths = generator.fit().predict(['a red square', 'a blue square'])
@@ -66,8 +66,8 @@ print(len(paths), paths[0].endswith('.png'))
 `audio` track. Both have `save` and `to_bytes` methods, and both are accepted back as inputs by any component.
 
 ```python exec="true" source="above" result="text"
-from skai.audio import SpeechTranscriber
-from skai.text import SpeechSynthesizer
+from skai.transcription import SpeechTranscriber
+from skai.generation import SpeechSynthesizer
 
 speech = SpeechSynthesizer(backend='dummy').fit().predict(['Hello there'])
 print(speech[0], SpeechTranscriber(backend='dummy').fit().predict(speech))

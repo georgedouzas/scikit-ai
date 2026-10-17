@@ -165,7 +165,8 @@ select = ["C", "E", "F", "W", "B", "I", "D", "N", "UP", "YTT", "ANN", "S",
 "src/skai/core/_media.py" = ["ANN401"]
 "src/skai/backends/*" = ["ANN401"]
 "src/skai/text/*" = ["ANN401"]
-"src/skai/audio/*" = ["ANN401"]
+"src/skai/generation/*" = ["ANN401"]
+"src/skai/transcription/*" = ["ANN401"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

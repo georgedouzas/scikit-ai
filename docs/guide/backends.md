@@ -28,7 +28,7 @@ Backend objects are scikit-learn estimators, so their parameters can be tuned li
 ```python exec="true" source="above" result="text"
 from sklearn.model_selection import GridSearchCV
 from skai.backends import DummyBackend
-from skai.text import TextClassifier
+from skai.classification import TextClassifier
 
 X = ['good', 'bad', 'great', 'awful'] * 3
 y = ['positive', 'negative'] * 6

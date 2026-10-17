@@ -12,11 +12,14 @@ from sklearn.metrics import accuracy_score
 from sklearn.pipeline import make_pipeline
 from sklearn.utils._param_validation import InvalidParameterError
 
-from skai.audio import SpeechTranscriber, TalkingAvatarGenerator
 from skai.backends import DummyBackend
+from skai.classification import ImageClassifier, TextClassifier
 from skai.core import SampleError, SampleFailureWarning
-from skai.image import ImageClassifier, ImageDescriptor
-from skai.text import ImageGenerator, SpeechSynthesizer, TextClassifier, TextEmbedder, TextSummarizer, TextTranslator
+from skai.description import ImageDescriptor
+from skai.embedding import TextEmbedder
+from skai.generation import ImageGenerator, SpeechSynthesizer, TalkingAvatarGenerator
+from skai.text import TextSummarizer, TextTranslator
+from skai.transcription import SpeechTranscriber
 
 AVATAR = Image.new('RGB', (8, 8))
 COMPONENTS = [

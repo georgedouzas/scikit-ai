@@ -4,10 +4,9 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from skai.audio import TalkingAvatarGenerator
 from skai.backends import ReplicateBackend
 from skai.core import InvalidResponseError, SampleError, Video
-from skai.text import ImageGenerator, SpeechSynthesizer
+from skai.generation import ImageGenerator, SpeechSynthesizer, TalkingAvatarGenerator
 from tests.fakes import Recorder, install_module, namespace, png_of, wav_of
 
 FAKE_CREDENTIAL = 'r8-test'

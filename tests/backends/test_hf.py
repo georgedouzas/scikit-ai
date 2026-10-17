@@ -4,10 +4,13 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from skai.audio import SpeechTranscriber
 from skai.backends import HFBackend
-from skai.image import ImageClassifier, ImageDescriptor
-from skai.text import ImageGenerator, SpeechSynthesizer, TextClassifier, TextEmbedder, TextSummarizer, TextTranslator
+from skai.classification import ImageClassifier, TextClassifier
+from skai.description import ImageDescriptor
+from skai.embedding import TextEmbedder
+from skai.generation import ImageGenerator, SpeechSynthesizer
+from skai.text import TextSummarizer, TextTranslator
+from skai.transcription import SpeechTranscriber
 from tests.fakes import Recorder, install_module, namespace
 
 

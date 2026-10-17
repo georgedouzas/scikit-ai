@@ -217,8 +217,10 @@ project takes shape.
 - Default models: every component and every provider-only backend string has a documented default model. This is a
   deliberate exception to the rule that the choice of model stays with the caller, so the components follow the
   scikit-learn practice of useful defaults. The caller can always override the model with `backend`.
-- Delivery surfaces: the importable packages `skai.text`, `skai.image`, `skai.audio`, `skai.backends` and `skai.core`.
-  The shared leaves live in `skai.core`, and imports run from `skai.core` to `skai.backends` to the component packages.
+- Delivery surfaces: the task-family packages `skai.classification`, `skai.description`, `skai.transcription`,
+  `skai.text`, `skai.embedding` and `skai.generation`, plus `skai.backends` and `skai.core`. Component names start
+  with their input type, except generators, which are named for their output. The shared leaves live in `skai.core`,
+  and imports run from `skai.core` to `skai.backends` to the task-family packages.
 - Language: Python >=3.11, <3.14.
 - Dependencies: `scikit-learn`, `numpy`, `pillow`, `soundfile` and `httpx` are required. Providers and video codecs are
   optional extras: `openai`, `hf`, `litellm`, `replicate`, `video` and `all`.
@@ -232,4 +234,4 @@ project takes shape.
   tested against fake clients and modules.
 - Layout: library. The importable package under `src/skai` is distributed to others.
 
-**Version**: 1.1.0 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-17
+**Version**: 1.1.1 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-17

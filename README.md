@@ -80,20 +80,21 @@ pdm install
 
 ## Components
 
-Components live in packages named after their input.
+Components live in modules named after their task family, like scikit-learn's estimators. Every class name starts
+with its input type, except generators, which are named for what they generate.
 
-| Package | Component | Does | Output |
+| Module | Component | Does | Output |
 |---|---|---|---|
-| `skai.text` | `TextClassifier` | assigns labels to texts, zero-shot or few-shot | labels and probabilities |
+| `skai.classification` | `TextClassifier` | assigns labels to texts, zero-shot or few-shot | labels and probabilities |
+| `skai.classification` | `ImageClassifier` | assigns labels to images, zero-shot or few-shot | labels and probabilities |
+| `skai.description` | `ImageDescriptor` | describes images | text |
+| `skai.transcription` | `SpeechTranscriber` | transcribes speech, optionally with timestamps | text or timed records |
 | `skai.text` | `TextSummarizer` | summarizes texts | text |
 | `skai.text` | `TextTranslator` | translates texts | text |
-| `skai.text` | `TextEmbedder` | maps texts to vectors | float array |
-| `skai.text` | `SpeechSynthesizer` | speaks texts, optionally in a cloned voice | audio |
-| `skai.text` | `ImageGenerator` | generates images from prompts | images |
-| `skai.image` | `ImageDescriptor` | describes images | text |
-| `skai.image` | `ImageClassifier` | assigns labels to images, zero-shot or few-shot | labels and probabilities |
-| `skai.audio` | `SpeechTranscriber` | transcribes speech, optionally with timestamps | text or timed records |
-| `skai.audio` | `TalkingAvatarGenerator` | animates a portrait so that it speaks the audio | video |
+| `skai.embedding` | `TextEmbedder` | maps texts to vectors | float array |
+| `skai.generation` | `SpeechSynthesizer` | speaks texts, optionally in a cloned voice | audio |
+| `skai.generation` | `ImageGenerator` | generates images from prompts | images |
+| `skai.generation` | `TalkingAvatarGenerator` | animates a portrait so that it speaks the audio | video |
 
 ## Usage
 
@@ -103,7 +104,7 @@ or credentials. Replace `backend='dummy'` with a backend from the table below to
 Classify texts with a few labeled examples:
 
 ```python
-from skai.text import TextClassifier
+from skai.classification import TextClassifier
 
 X = ['I loved this movie.', 'The product broke after a day.', 'Great service!', 'Never again.']
 y = ['positive', 'negative', 'positive', 'negative']
@@ -117,7 +118,7 @@ Describe images, then classify the descriptions in one pipeline:
 ```python
 from PIL import Image
 from sklearn.pipeline import make_pipeline
-from skai.image import ImageDescriptor
+from skai.description import ImageDescriptor
 
 images = [Image.new('RGB', (64, 64), color) for color in ('red', 'green', 'blue', 'white')]
 pipeline = make_pipeline(ImageDescriptor(backend='dummy'), TextClassifier(backend='dummy'))
@@ -127,8 +128,8 @@ pipeline.fit(images, ['warm', 'cold', 'cold', 'warm']).predict(images)
 Make a portrait speak a text:
 
 ```python
-from skai.audio import TalkingAvatarGenerator
-from skai.text import SpeechSynthesizer
+from skai.generation import TalkingAvatarGenerator
+from skai.generation import SpeechSynthesizer
 
 portrait = Image.new('RGB', (64, 64), 'white')
 pipeline = make_pipeline(

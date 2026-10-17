@@ -7,7 +7,6 @@ import pandas as pd
 import pytest
 from PIL import Image
 
-from skai.audio import SpeechTranscriber, TalkingAvatarGenerator
 from skai.core import (
     Audio,
     Backend,
@@ -19,8 +18,10 @@ from skai.core import (
     read_image,
     read_video,
 )
-from skai.image import ImageDescriptor
-from skai.text import ImageGenerator, SpeechSynthesizer, TextSummarizer, TextTranslator
+from skai.description import ImageDescriptor
+from skai.generation import ImageGenerator, SpeechSynthesizer, TalkingAvatarGenerator
+from skai.text import TextSummarizer, TextTranslator
+from skai.transcription import SpeechTranscriber
 
 TEXTS = ['one two three', 'four five six', 'seven eight nine']
 

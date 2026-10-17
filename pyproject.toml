@@ -76,6 +76,7 @@ docs = "nox --error-on-external-run -R -s docs -- {args:serve}"
 formatting = "nox --error-on-external-run -R -s formatting -- {args:all}"
 checks = "nox --default-venv-backend uv --error-on-external-run -R -s checks -- {args:all}"
 tests = "nox --default-venv-backend uv --error-on-external-run -R -s tests"
+e2e = "nox --default-venv-backend uv --error-on-external-run -R -s e2e"
 changelog = "nox --error-on-external-run -R -s changelog"
 release = "nox --error-on-external-run -R -s release"
 
@@ -119,6 +120,10 @@ tests = [
     "pytest-randomly>=3.15.0",
     "pytest-xdist>=3.6.1",
 ]
+e2e = [
+    "pytest>=8.2.2",
+    "python-dotenv>=1.1.0",
+]
 changelog = [
     "git-changelog>=2.5.2",
 ]
@@ -159,6 +164,7 @@ select = ["C", "E", "F", "W", "B", "I", "D", "N", "UP", "YTT", "ANN", "S",
 # Fakes and fixtures stand in for untyped provider objects.
 "tests/conftest.py" = ["ANN401"]
 "tests/fakes.py" = ["ANN401"]
+"e2e/conftest.py" = ["ANN401"]
 # Components narrow the sample types of the base hooks, and backends and media codecs handle objects of untyped
 # optional libraries.
 "src/skai/core/_estimator.py" = ["ANN401"]

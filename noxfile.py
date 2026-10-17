@@ -167,6 +167,19 @@ def tests(session: nox.Session) -> None:
 
 
 @nox.session
+def e2e(session: nox.Session) -> None:
+    """Run the end-to-end tests against real providers, reading credentials from `.env`.
+
+    Arguments:
+        session: The nox session.
+    """
+    session.run('pdm', 'install', '-G', 'openai', '-G', 'video', '-dG', 'e2e', external=True)
+    session.run(
+        'pytest', '-p', 'no:randomly', '-p', 'no:cacheprovider', '-o', 'addopts=', '-v', 'e2e', *session.posargs,
+    )
+
+
+@nox.session
 def changelog(session: nox.Session) -> None:
     """Build the changelog.
 

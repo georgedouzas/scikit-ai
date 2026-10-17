@@ -31,26 +31,34 @@ Classifier components SHALL accept a `k_shot` parameter selecting how many fitte
 ## ADDED Requirements
 
 ### Requirement: Fit learns from the data it is given
-Every component SHALL derive fitted state from the samples and references passed to `fit` and use that state in `predict` or `transform`. Generators SHALL ignore `y`, as scikit-learn transformers do, because a pipeline passes its final target to every step.
+Every component SHALL keep the signature `fit(X, y=None)`, derive fitted state from the data passed to it, and use that state in `predict` or `transform`. For a supervised generator, `y` SHALL hold its own targets, one per sample of `X`, in the type of its output.
 
 #### Scenario: Fitted state changes predictions
 - **WHEN** a component is fitted once without data and once with data, on the deterministic `dummy` backend
 - **THEN** the backend receives different requests for the same input
 
-#### Scenario: Generators ignore the target
-- **WHEN** a generator is fitted with a non-`None` `y` and no references
-- **THEN** its fitted state equals that of a fit without `y`
+#### Scenario: References scored as targets
+- **WHEN** `cross_val_score` runs on a `TextSummarizer` with texts, reference summaries and a scorer that compares summaries
+- **THEN** every fold learns from its training references and is scored against its test references
 
-### Requirement: Generators take references through named fit parameters
-Generators SHALL take reference data through named keyword parameters of `fit`, such as `summaries` or `transcripts`, never through `y`. These parameters SHALL support scikit-learn metadata routing, so a pipeline can send them to one step.
+### Requirement: Generators ignore y in fit_transform
+A generator SHALL learn from `y` in `fit` and SHALL ignore `y` in `fit_transform`, because pipelines and feature unions fit intermediate steps through `fit_transform` and pass them the final target. A `use_y` parameter SHALL override this rule: `'auto'` (default) follows it, `True` learns from `y` in both methods, and `False` never does.
 
 #### Scenario: Pipeline target is not read as references
 - **WHEN** a pipeline of `SpeechTranscriber` and `TextClassifier` is fitted on recordings and class labels
-- **THEN** the transcriber learns no vocabulary from the labels
+- **THEN** the transcriber learns no vocabulary from the labels and the classifier learns from them
 
-#### Scenario: Routed references
-- **WHEN** metadata routing is enabled, the transcriber requests `transcripts`, and the pipeline is fitted with `transcripts=references`
-- **THEN** the transcriber learns its vocabulary from `references` and the classifier still learns from the labels
+#### Scenario: Supervised final step
+- **WHEN** a pipeline of `SpeechTranscriber` and `TextSummarizer` is fitted on recordings and reference summaries
+- **THEN** the summarizer learns from the references and the transcriber does not
+
+#### Scenario: Override
+- **WHEN** a transcriber with `use_y=True` is an intermediate pipeline step fitted with reference transcripts
+- **THEN** it learns its vocabulary from them
+
+#### Scenario: Mismatched targets
+- **WHEN** a supervised generator is fitted with a `y` whose length differs from `X`
+- **THEN** `ValueError` is raised naming both lengths
 
 ### Requirement: Fine-tuning adaptation
 Components that support fine-tuning SHALL accept `adaptation` with values `'examples'` (default) and `'finetune'`. With `'finetune'`, `fit` SHALL train a model on all of its data, store the model id in `model_`, and use it at prediction time instead of examples.

@@ -3,17 +3,17 @@
 ## ADDED Requirements
 
 ### Requirement: Synthesizer learns a voice from samples
-`SpeechSynthesizer.fit(X=None, voice_samples=...)` SHALL learn `voice_` from one or more recordings of the target voice, joined into one reference, and SHALL clone that voice at prediction. It SHALL raise `UnsupportedBackendError` at `fit` on backends that cannot clone voices.
+`SpeechSynthesizer` SHALL accept one recording or a list of recordings of the target voice in its `voice` parameter. `fit` SHALL learn `voice_` by joining them into one reference, and SHALL clone that voice at prediction. It SHALL raise `UnsupportedBackendError` at `fit` on backends that cannot clone voices.
 
 #### Scenario: Voice learned from samples
-- **WHEN** it is fitted with two short recordings on a backend that clones voices
+- **WHEN** it is constructed with `voice=[recording_1, recording_2]` and fitted on a backend that clones voices
 - **THEN** `voice_` is the joined reference audio and every speech request carries it
 
 ### Requirement: Image generator learns a style from references
-`ImageGenerator.fit(X=None, style_images=...)` SHALL learn `style_`, a short description of the visual style that the reference images share, written by the backend's image description task, and SHALL apply it to every prompt. An explicit `style` parameter SHALL take precedence over `style_`.
+`ImageGenerator` SHALL accept reference images in a `style_images` parameter, and `fit` SHALL learn `style_`, a short description of the visual style that the reference images share, written by the backend's image description task, and SHALL apply it to every prompt. An explicit `style` parameter SHALL take precedence over `style_`.
 
 #### Scenario: Learned style
-- **WHEN** it is fitted with three watercolor images on a backend that describes images
+- **WHEN** it is constructed with `style_images` holding three watercolor images and fitted on a backend that describes images
 - **THEN** `style_` is set and every generation request carries it
 
 #### Scenario: Backend without description

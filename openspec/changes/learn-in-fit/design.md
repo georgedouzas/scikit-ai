@@ -18,13 +18,21 @@ examples, and `BaseEmbedder.fit` only probes the dimensions. Requests are frozen
 
 ## Decisions
 
-### Named references with metadata routing
-Generators declare their reference parameter in a class variable, such as `reference_param = 'summaries'`, and
-`BaseGenerator.fit(X=None, y=None, **references)` validates that only that name is passed. scikit-learn builds
-`set_fit_request` from the `fit` signature, so each generator overrides `fit` with an explicit keyword, for example
-`fit(self, X=None, y=None, *, summaries=None)`, and delegates to the base. That makes routing work with
-`sklearn.set_config(enable_metadata_routing=True)`. Reading `y` only outside pipelines was the alternative. It was
-rejected because a component cannot tell whether it is inside a pipeline.
+### `y` is the target, and `fit_transform` ignores it
+Supervised generators read `y` as their own targets, so the scikit-learn tools that pass `y` (scorers,
+`cross_val_score`, `GridSearchCV`) work on references. `Pipeline`, `FeatureUnion` and `ColumnTransformer` fit
+intermediate steps through `fit_transform(X, y)` with the final target, so `BaseGenerator.fit_transform` calls
+`fit(X, None)` and then `transform(X)` when `use_y='auto'`. `fit(X, y)` stays supervised. `use_y=True` or `False`
+fixes the behavior for unusual cases, such as fitting a transcriber with references inside a pipeline.
+
+The alternatives were named fit parameters with metadata routing, and ignoring `y` everywhere. Named parameters break
+scoring and model selection on references and need routing configuration. Ignoring `y` everywhere makes supervised
+generators impossible to tune. The cost of the chosen rule is one implicit difference between `fit` and
+`fit_transform`, documented on every generator and in the guide.
+
+Conditioning that is not paired with `X` stays in constructor parameters. `SpeechSynthesizer.voice` accepts a list
+of recordings, `ImageGenerator` gains `style_images`, and `TalkingAvatarGenerator.avatar` is unchanged. `fit`
+prepares them.
 
 ### Shared few-shot pairs
 `BaseGenerator` gains `_select_pairs(samples, references)`, the same selection as the classifiers'

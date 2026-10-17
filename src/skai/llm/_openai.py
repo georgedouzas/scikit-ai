@@ -179,7 +179,7 @@ class OpenAIClassifier(ClassifierMixin, MultiOutputMixin, BaseEstimator):
             if not isinstance(self.classes, dict):
                 if self.classes is not None:
                     error_msg = (
-                        'Parameter `classes` must be a dictonary of class labels as keys and textual descriptions as '
+                        'Parameter `classes` must be a dictionary of class labels as keys and textual descriptions as '
                         'values when `y` is provided.'
                     )
                     raise TypeError(error_msg)

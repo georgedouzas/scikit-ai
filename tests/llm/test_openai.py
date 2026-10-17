@@ -1,5 +1,7 @@
 """Test OpenAI models."""
 
+import re
+
 import numpy as np
 import openai
 import pytest
@@ -97,7 +99,7 @@ def test_classifier_fit_error_no_classes_no_targets() -> None:
 def test_classifier_fit_error_type_classes_targets(classes) -> None:
     """Tests the fit method when wrong classes and targets are provided."""
     classifier = OpenAIClassifier(classes=classes)
-    with pytest.raises(TypeError, match='Parameter `classes` must be a dictonary of class'):
+    with pytest.raises(TypeError, match='Parameter `classes` must be a dictionary of class'):
         classifier.fit(X, y)
 
 
@@ -270,7 +272,7 @@ def test_classifier_fit_instructions(classes) -> None:
 def test_classifier_predict_not_fitted() -> None:
     """Tests the predict method of classifier when is not fitted."""
     classifier = OpenAIClassifier()
-    with pytest.raises(NotFittedError, match='This OpenAIClassifier instance is not fitted yet.'):
+    with pytest.raises(NotFittedError, match=re.escape('This OpenAIClassifier instance is not fitted yet.')):
         classifier.predict(X_test)
 
 

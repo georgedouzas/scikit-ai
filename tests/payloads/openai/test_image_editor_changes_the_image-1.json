@@ -1,0 +1,33 @@
+{
+  "method": "POST",
+  "path": "/v1/images/edits",
+  "request": null,
+  "response": {
+    "background": "opaque",
+    "created": 1792270636,
+    "data": [
+      {
+        "b64_json": "<1837432 characters>",
+        "generation_id": "8899e377-19c0-484e-9c04-d0b3dc332837"
+      }
+    ],
+    "output_format": "png",
+    "quality": "high",
+    "safety_identifier": null,
+    "size": "1024x1024",
+    "usage": {
+      "input_tokens": 222,
+      "input_tokens_details": {
+        "image_tokens": 194,
+        "text_tokens": 28
+      },
+      "output_tokens": 4160,
+      "output_tokens_details": {
+        "image_tokens": 4160,
+        "text_tokens": 0
+      },
+      "total_tokens": 4382
+    }
+  },
+  "status": 200
+}

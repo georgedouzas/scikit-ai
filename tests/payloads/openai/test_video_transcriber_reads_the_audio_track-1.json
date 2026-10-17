@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/transcriptions",
+  "request": null,
+  "response": {
+    "text": "Good morning. The apple harvest starts today.",
+    "usage": {
+      "seconds": 4,
+      "type": "duration"
+    }
+  },
+  "status": 200
+}

@@ -1,0 +1,76 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You describe images, audio and videos. Answer with the description only.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "video frames <image 1> <image 2> <image 3>\n\nDescribe the video in one sentence.",
+            "type": "text"
+          },
+          {
+            "image_url": {
+              "url": "<128910 characters>"
+            },
+            "type": "image_url"
+          },
+          {
+            "image_url": {
+              "url": "<128910 characters>"
+            },
+            "type": "image_url"
+          },
+          {
+            "image_url": {
+              "url": "<128910 characters>"
+            },
+            "type": "image_url"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "A single red apple sits centered and still on a light, neutral surface and background.",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792270729,
+    "id": "chatcmpl-Ea5mLecxtDhJAfIxfyuJUIyGizzt0",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 154,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 128,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 408,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 562
+    }
+  },
+  "status": 200
+}

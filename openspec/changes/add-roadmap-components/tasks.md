@@ -10,7 +10,8 @@
 ## 2. Provider verification
 
 - [ ] 2.1 Make one real call per provider and new task with the planned default models on `hf` and `litellm`, record the payloads under `tests/payloads/`, and update the default-model table with the models that work (blocked on credentials and hardware)
-- [ ] 2.5 Add an OpenAI end-to-end scenario for every new component OpenAI supports (video generation and animation behind `SKAI_E2E_VIDEO=1`), record the payloads, and verify they pass
+- [x] 2.5 Add an OpenAI end-to-end scenario for every new component OpenAI supports, record the payloads, and verify they pass (audio classification and description, video classification, description and transcription, extraction, image editing)
+- [ ] 2.6 Run the Sora scenario for `VideoGenerator` and `ImageAnimator` behind `SKAI_E2E_VIDEO=1` and verify it passes (blocked: the OpenAI account gets 404 from `/v1/videos`, so it has no Sora API access)
 - [x] 2.2 Add the `pdm e2e` harness: an `e2e/` suite outside `pdm tests` that loads credentials from `.env`, skips without them, records sanitized responses under `tests/payloads/<provider>/`, gates video generation behind `SKAI_E2E_VIDEO=1`, and a test that fails if a recording holds anything shaped like a credential
 - [x] 2.3 Run `pdm e2e` on the OpenAI backend for the built components, fix every adapter or default model that fails, and verify all OpenAI end-to-end tests pass
 - [x] 2.4 Add OpenAI end-to-end pipelines for the built components (descriptions → classifier, transcribe → summarize → translate, files between steps, descriptions → speech, descriptions → embeddings → `LogisticRegression`) on images generated once per session, and verify they pass

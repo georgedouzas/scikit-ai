@@ -40,7 +40,7 @@ from skai.core import (
 CHAT_MODEL = 'gpt-5-mini'
 FINETUNE_MODEL = 'gpt-4.1-mini-2025-04-14'
 DEFAULT_VOICE = 'alloy'
-AUDIO_MODEL = 'gpt-4o-audio-preview'
+AUDIO_MODEL = 'gpt-audio-mini'
 VIDEO_MODEL = 'sora-2'
 FINISHED_STATUSES = frozenset({'succeeded', 'failed', 'cancelled'})
 VIDEO_FINISHED_STATUSES = frozenset({'completed', 'failed'})

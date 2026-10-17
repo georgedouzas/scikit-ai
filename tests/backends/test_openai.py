@@ -349,7 +349,7 @@ def test_audio_tasks_send_audio_parts(audio):
     classifier = AudioClassifier(labels=['dog', 'siren'], backend=OpenAIBackend(client=client)).fit()
     assert classifier.predict([audio]).tolist() == ['siren']
     call = client.chat.completions.create.calls[-1]
-    assert call['model'] == 'gpt-4o-audio-preview'
+    assert call['model'] == 'gpt-audio-mini'
     part = call['messages'][1]['content'][-1]
     assert part['type'] == 'input_audio'
     assert part['input_audio']['format'] == 'wav'

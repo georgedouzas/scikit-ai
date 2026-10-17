@@ -195,9 +195,9 @@ The default model of every component and provider:
 | `ImageClassifier` | `hf` | `openai/clip-vit-base-patch32` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
 | `SpeechTranscriber` | `hf` | `openai/whisper-small` | `whisper-1` | | |
 | `TalkingAvatarGenerator` | `replicate` | | | | `cjwbw/sadtalker` |
-| `AudioClassifier` | `hf` | `laion/clap-htsat-unfused` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` | |
+| `AudioClassifier` | `hf` | `laion/clap-htsat-unfused` | `gpt-audio-mini` | `gemini/gemini-2.5-flash` | |
 | `VideoClassifier` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `gemini/gemini-2.5-flash` | |
-| `AudioDescriptor` | `hf` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` | |
+| `AudioDescriptor` | `hf` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-audio-mini` | `gemini/gemini-2.5-flash` | |
 | `VideoDescriptor` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `gemini/gemini-2.5-flash` | |
 | `VideoTranscriber` | `hf` | `openai/whisper-small` | `whisper-1` | | |
 | `TextExtractor` | `hf` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |

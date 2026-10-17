@@ -1,0 +1,68 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You describe images, audio and videos. Answer with the description only.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "<audio 1>\n\nDescribe the audio in one sentence.",
+            "type": "text"
+          },
+          {
+            "input_audio": {
+              "data": "<300860 characters>",
+              "format": "wav"
+            },
+            "type": "input_audio"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-audio-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "The audio features someone saying, \"Good morning, the apple harvest starts today.\"",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792270803,
+    "id": "chatcmpl-Ea5nXnSuxpT2WXxZQIx0nsuiO9PHo",
+    "model": "gpt-audio-mini-2025-12-15",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": "fp_6f28079852",
+    "usage": {
+      "completion_tokens": 16,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": 0,
+        "text_tokens": 16
+      },
+      "prompt_tokens": 88,
+      "prompt_tokens_details": {
+        "audio_tokens": 47,
+        "cached_tokens": 0,
+        "image_tokens": 0,
+        "text_tokens": 41
+      },
+      "total_tokens": 104
+    }
+  },
+  "status": 200
+}

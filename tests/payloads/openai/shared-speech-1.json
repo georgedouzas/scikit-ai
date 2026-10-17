@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/speech",
+  "request": {
+    "input": "Good morning, the apple harvest starts today.",
+    "model": "gpt-4o-mini-tts",
+    "response_format": "wav",
+    "voice": "alloy"
+  },
+  "response": {
+    "bytes": 225644,
+    "content_type": "audio/wav"
+  },
+  "status": 200
+}

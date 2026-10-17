@@ -7,13 +7,24 @@ from pathlib import Path
 import pytest
 
 import skai
-import skai.audio
 import skai.backends
+import skai.classification
 import skai.core
-import skai.image
+import skai.description
+import skai.embedding
+import skai.generation
 import skai.text
+import skai.transcription
 
-MODULES = [skai, skai.audio, skai.backends, skai.core, skai.image, skai.text]
+COMPONENT_MODULES = [
+    skai.classification,
+    skai.description,
+    skai.transcription,
+    skai.text,
+    skai.embedding,
+    skai.generation,
+]
+MODULES = [skai, skai.backends, skai.core, *COMPONENT_MODULES]
 README = Path(__file__).parents[1] / 'README.md'
 
 
@@ -39,9 +50,7 @@ def test_docstring_examples_run(test):
 def test_every_public_component_has_an_example():
     """Give every public component and the dummy backend a runnable example."""
     names = {test.name for test in find_examples()}
-    components = [
-        f'{module.__name__}.{name}' for module in (skai.text, skai.image, skai.audio) for name in module.__all__
-    ]
+    components = [f'{module.__name__}.{name}' for module in COMPONENT_MODULES for name in module.__all__]
     assert {*components, 'skai.backends.DummyBackend'} <= names
 
 

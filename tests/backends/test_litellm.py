@@ -5,9 +5,11 @@ import pytest
 from PIL import Image
 
 from skai.backends import LiteLLMBackend
+from skai.classification import TextClassifier
 from skai.core import MissingCredentialError
-from skai.image import ImageDescriptor
-from skai.text import TextClassifier, TextEmbedder, TextSummarizer
+from skai.description import ImageDescriptor
+from skai.embedding import TextEmbedder
+from skai.text import TextSummarizer
 from tests.fakes import Recorder, chat_response, install_module, namespace, round_trip
 
 

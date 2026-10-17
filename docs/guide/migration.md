@@ -1,11 +1,12 @@
 # Migrating from 0.1
 
 Version 0.2 refocuses scikit-ai on task-oriented components for text, images, audio and video. The `skai.llm` and
-`skai.base` packages are removed.
+`skai.base` packages are removed, and components live in modules named after their task family, such as
+`skai.classification` and `skai.generation`.
 
 ## Text classification
 
-`skai.llm.OpenAIClassifier` is replaced by `skai.text.TextClassifier` with the OpenAI backend:
+`skai.llm.OpenAIClassifier` is replaced by `skai.classification.TextClassifier` with the OpenAI backend:
 
 | 0.1 | 0.2 |
 |---|---|
@@ -21,7 +22,7 @@ files are no longer loaded automatically.
 
 ```python exec="true" source="above" result="text"
 from skai.backends import DummyBackend
-from skai.text import TextClassifier
+from skai.classification import TextClassifier
 
 classifier = TextClassifier(labels={0: 'negative', 1: 'positive'}, backend=DummyBackend())
 print(classifier.fit().predict(['I loved it.']))

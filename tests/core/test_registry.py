@@ -5,8 +5,8 @@ import pytest
 from sklearn.base import clone
 from sklearn.model_selection import GridSearchCV
 
-from skai.audio import SpeechTranscriber, TalkingAvatarGenerator
 from skai.backends import DummyBackend, HFBackend, OpenAIBackend
+from skai.classification import TextClassifier
 from skai.core import (
     Backend,
     MissingCredentialError,
@@ -15,7 +15,9 @@ from skai.core import (
     list_backends,
     register,
 )
-from skai.text import TextClassifier, TextSummarizer
+from skai.generation import TalkingAvatarGenerator
+from skai.text import TextSummarizer
+from skai.transcription import SpeechTranscriber
 from tests.fakes import install_module, namespace, round_trip
 
 

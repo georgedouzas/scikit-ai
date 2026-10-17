@@ -1,11 +1,15 @@
 """Task-oriented components for text, images, audio and video with a scikit-learn API.
 
 Every component does one job and follows the scikit-learn estimator API, so it can be fitted, cloned, tuned and used
-in pipelines. Components live in packages named after their input:
+in pipelines. Components live in packages named after their task family, and every class name starts with its
+input type, except generators, which are named for what they generate:
 
-- `skai.text`: classify, summarize, translate and embed texts, speak them and generate images from them.
-- `skai.image`: describe and classify images.
-- `skai.audio`: transcribe speech and animate a portrait that speaks it.
+- `skai.classification`: assign labels to texts and images.
+- `skai.description`: describe images in natural language.
+- `skai.transcription`: transcribe speech.
+- `skai.text`: summarize and translate texts.
+- `skai.embedding`: map texts to vectors.
+- `skai.generation`: generate images, speech and talking-portrait videos.
 
 The `backend` parameter of every component chooses where it runs, for example `'hf'` for local open-source models,
 `'openai'` for the OpenAI API, or `'dummy'` for offline placeholder outputs. The backends live in `skai.backends`, and

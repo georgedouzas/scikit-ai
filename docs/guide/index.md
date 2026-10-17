@@ -20,9 +20,10 @@ Calling `predict` or `transform` before `fit` raises `NotFittedError`, and inval
 
 ```python exec="true" source="above" result="text"
 from sklearn.pipeline import make_pipeline
-from skai.audio import SpeechTranscriber
+from skai.transcription import SpeechTranscriber
 from skai.core import Audio
-from skai.text import SpeechSynthesizer, TextClassifier
+from skai.classification import TextClassifier
+from skai.generation import SpeechSynthesizer
 
 speech = SpeechSynthesizer(backend='dummy').fit().predict(['great product', 'awful service', 'love it'])
 pipeline = make_pipeline(SpeechTranscriber(backend='dummy'), TextClassifier(k_shot=2, random_state=0, backend='dummy'))
@@ -43,5 +44,6 @@ Every component takes the same execution parameters:
 
 - [Media inputs and outputs](media.md) lists the accepted samples and output formats.
 - [Backends](backends.md) explains how to choose and configure where components run.
-- [Text](text.md), [images](image.md) and [audio](audio.md) describe every component.
+- [Classification](classification.md), [description](description.md), [transcription](transcription.md),
+  [text](text.md), [embedding](embedding.md) and [generation](generation.md) describe every component.
 - [Migrating from 0.1](migration.md) maps the removed `OpenAIClassifier` to `TextClassifier`.

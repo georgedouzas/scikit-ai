@@ -4,11 +4,14 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from skai.audio import SpeechTranscriber, TalkingAvatarGenerator
 from skai.backends import DummyBackend
+from skai.classification import ImageClassifier, TextClassifier
 from skai.core import TASKS
-from skai.image import ImageClassifier, ImageDescriptor
-from skai.text import ImageGenerator, SpeechSynthesizer, TextClassifier, TextEmbedder, TextSummarizer, TextTranslator
+from skai.description import ImageDescriptor
+from skai.embedding import TextEmbedder
+from skai.generation import ImageGenerator, SpeechSynthesizer, TalkingAvatarGenerator
+from skai.text import TextSummarizer, TextTranslator
+from skai.transcription import SpeechTranscriber
 
 COMPONENTS = [
     (TextClassifier(labels=['a', 'b'], backend='dummy'), ['x', 'y']),

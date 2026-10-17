@@ -12,6 +12,7 @@
 - [ ] 2.1 Make one real call per provider and new task with the planned default models, record the payloads under `tests/payloads/`, and update the default-model table in the design and the README with the models that work
 - [x] 2.2 Add the `pdm e2e` harness: an `e2e/` suite outside `pdm tests` that loads credentials from `.env`, skips without them, records sanitized responses under `tests/payloads/<provider>/`, gates video generation behind `SKAI_E2E_VIDEO=1`, and a test that fails if a recording holds anything shaped like a credential
 - [x] 2.3 Run `pdm e2e` on the OpenAI backend for the built components, fix every adapter or default model that fails, and verify all OpenAI end-to-end tests pass
+- [x] 2.4 Add OpenAI end-to-end pipelines for the built components (descriptions → classifier, transcribe → summarize → translate, files between steps, descriptions → speech, descriptions → embeddings → `LogisticRegression`) on images generated once per session, and verify they pass
 
 ## 3. Classification and description
 

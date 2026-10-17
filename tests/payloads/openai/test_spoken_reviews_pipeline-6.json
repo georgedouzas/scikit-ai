@@ -5,7 +5,7 @@
   "response": {
     "text": "I am thrilled with this purchase.",
     "usage": {
-      "seconds": 3,
+      "seconds": 4,
       "type": "duration"
     }
   },

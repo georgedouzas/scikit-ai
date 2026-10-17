@@ -1,0 +1,38 @@
+{
+  "method": "POST",
+  "path": "/v1/images/generations",
+  "request": {
+    "model": "gpt-image-1",
+    "n": 1,
+    "prompt": "A small blue car parked on an empty street",
+    "size": "1024x1024"
+  },
+  "response": {
+    "background": "opaque",
+    "created": 1792257116,
+    "data": [
+      {
+        "b64_json": "<2836704 characters>",
+        "generation_id": "2319ec9c-23a4-4ad3-954b-4132413ae4fa"
+      }
+    ],
+    "output_format": "png",
+    "quality": "high",
+    "safety_identifier": null,
+    "size": "1024x1024",
+    "usage": {
+      "input_tokens": 15,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 15
+      },
+      "output_tokens": 4160,
+      "output_tokens_details": {
+        "image_tokens": 4160,
+        "text_tokens": 0
+      },
+      "total_tokens": 4175
+    }
+  },
+  "status": 200
+}

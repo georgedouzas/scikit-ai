@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/speech",
+  "request": {
+    "input": "Paris is the capital of France.",
+    "model": "gpt-4o-mini-tts",
+    "response_format": "wav",
+    "voice": "alloy"
+  },
+  "response": {
+    "bytes": 153644,
+    "content_type": "audio/wav"
+  },
+  "status": 200
+}

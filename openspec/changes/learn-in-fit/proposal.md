@@ -14,22 +14,27 @@ available for every component:
 ## What Changes
 
 - Every component SHALL learn from the data given to `fit`. Fitting without data stays possible and means zero-shot.
-- Generators take their references through named fit parameters, such as `summaries=` and `transcripts=`, and ignore
-  `y`. In a pipeline, `y` is the final step's target and would otherwise be read as references. The parameters can
-  be routed to one step with scikit-learn metadata routing.
+- Every `fit` keeps the scikit-learn signature `fit(X, y=None)`. For a supervised generator, `y` holds its own
+  targets (reference summaries, translations, descriptions or transcripts), so scorers, `cross_val_score` and
+  `GridSearchCV` compare predictions with references as usual.
+- In a pipeline, `y` is the final step's target, and scikit-learn passes it to every step. Intermediate steps are
+  fitted through `fit_transform`, so generators learn from `y` in `fit` and ignore it in `fit_transform`. A `use_y`
+  parameter (`'auto'`, `True` or `False`) overrides the rule.
+- Conditioning that is not paired with `X` stays in constructor parameters and is prepared in `fit`: reference
+  audio in `voice`, reference images in a new `style_images` parameter, and the portrait in `avatar`.
 - **BREAKING** `k_shot=None` on classifiers selects one example per class, and `k_shot=0` is zero-shot.
 - What each component learns:
 
 | Component | Fit data | Learned state | Used at prediction |
 |---|---|---|---|
 | `TextClassifier`, `ImageClassifier` | `X`, `y` | `classes_`, `examples_` | few-shot examples (unchanged, new default) |
-| `TextSummarizer` | `X`, `summaries=` | `examples_`, `max_length_` | few-shot pairs and a learned length |
-| `TextTranslator` | `X`, `translations=` | `examples_`, `glossary_` | few-shot pairs and term translations |
-| `ImageDescriptor` | `X`, `descriptions=` | `examples_` | few-shot image and description pairs |
-| `SpeechTranscriber` | `X`, `transcripts=` | `vocabulary_` | a context prompt of domain terms |
+| `TextSummarizer` | `X`, `y` (summaries) | `examples_`, `max_length_` | few-shot pairs and a learned length |
+| `TextTranslator` | `X`, `y` (translations) | `examples_`, `glossary_` | few-shot pairs and term translations |
+| `ImageDescriptor` | `X`, `y` (descriptions) | `examples_` | few-shot image and description pairs |
+| `SpeechTranscriber` | `X`, `y` (transcripts) | `vocabulary_` | a context prompt of domain terms |
 | `TextEmbedder` | `X` | `mean_`, `components_` | centering, and PCA when `dimensions` is set and the backend cannot shorten |
-| `SpeechSynthesizer` | `voice_samples=` | `voice_` | voice cloning from the samples |
-| `ImageGenerator` | `style_images=` | `style_` | a style description learned from reference images |
+| `SpeechSynthesizer` | `voice` parameter (one or more recordings) | `voice_` | voice cloning from the recordings |
+| `ImageGenerator` | `style_images` parameter | `style_` | a style description learned from reference images |
 | `TalkingAvatarGenerator` | `avatar` | `avatar_` | the portrait cropped and sized for the backend |
 
 - Add `adaptation='finetune'` to `TextClassifier`, `ImageClassifier`, `TextSummarizer`, `TextTranslator` and
@@ -45,8 +50,8 @@ available for every component:
 ## Capabilities
 
 ### Modified Capabilities
-- `media-estimator-api`: fit learns from data, generators take references through named parameters, and `k_shot`
-  gets a new default.
+- `media-estimator-api`: fit learns from data, generators learn from `y` in `fit` but not in `fit_transform`, and
+  `k_shot` gets a new default.
 - `classification`: fine-tuning.
 - `text-processing`: summaries and translations learned from references, and fine-tuning.
 - `transcription`: vocabulary learned from reference transcripts.

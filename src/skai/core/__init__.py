@@ -12,15 +12,18 @@ from ._errors import (
     UnsupportedBackendError,
 )
 from ._estimator import BaseClassifier, BaseEmbedder, BaseGenerator, BaseMediaEstimator, BaseMediaGenerator
-from ._io import encode_png, read_audio, read_image, read_video, to_data_url, to_object_array
+from ._io import encode_png, read_audio, read_image, read_video, sample_frames, to_data_url, to_object_array
 from ._media import Audio, Video
 from ._prompts import Prompt, build_image_prompt
 from ._registry import list_backends, register
 from ._requests import (
+    AnimationRequest,
     AvatarRequest,
     ClassificationRequest,
     DescriptionRequest,
     EmbeddingRequest,
+    ExtractionRequest,
+    ImageEditRequest,
     ImageGenerationRequest,
     Segment,
     SpeechRequest,
@@ -28,11 +31,14 @@ from ._requests import (
     Transcript,
     TranscriptionRequest,
     TranslationRequest,
+    VideoFrames,
+    VideoGenerationRequest,
 )
 from ._utils import import_optional, read_env
 
 __all__: list[str] = [
     'TASKS',
+    'AnimationRequest',
     'Audio',
     'AvatarRequest',
     'Backend',
@@ -44,6 +50,8 @@ __all__: list[str] = [
     'ClassificationRequest',
     'DescriptionRequest',
     'EmbeddingRequest',
+    'ExtractionRequest',
+    'ImageEditRequest',
     'ImageGenerationRequest',
     'InvalidResponseError',
     'InvalidSampleError',
@@ -62,6 +70,8 @@ __all__: list[str] = [
     'TranslationRequest',
     'UnsupportedBackendError',
     'Video',
+    'VideoFrames',
+    'VideoGenerationRequest',
     'build_image_prompt',
     'encode_png',
     'import_optional',
@@ -71,6 +81,7 @@ __all__: list[str] = [
     'read_image',
     'read_video',
     'register',
+    'sample_frames',
     'to_data_url',
     'to_object_array',
 ]

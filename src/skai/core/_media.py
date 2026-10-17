@@ -14,6 +14,7 @@ from numpy.typing import NDArray
 
 from ._utils import import_optional
 
+SILENCE_SAMPLE_RATE = 16000
 VIDEO_FORMAT = 'mp4'
 VIDEO_CODEC = 'libx264'
 AUDIO_CODEC = 'aac'
@@ -235,6 +236,16 @@ class Video:
     def duration(self) -> float:
         """The length of the video in seconds."""
         return self.frames.shape[0] / self.fps
+
+    def audio_track(self) -> Audio:
+        """Return the audio track mixed to mono, or silence as long as the video when it has no track.
+
+        Returns:
+            The mono audio track.
+        """
+        if self.audio is None:
+            return Audio(np.zeros(round(self.duration * SILENCE_SAMPLE_RATE), dtype=np.float32), SILENCE_SAMPLE_RATE)
+        return self.audio.to_mono()
 
     def to_bytes(self) -> bytes:
         """Encode the video as MP4 bytes.

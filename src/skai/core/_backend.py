@@ -20,23 +20,30 @@ from ._prompts import (
     Prompt,
     build_classification_prompt,
     build_description_prompt,
+    build_extraction_prompt,
     build_summary_prompt,
     build_translation_prompt,
+    parse_fields,
     parse_labels,
 )
 from ._requests import (
+    AnimationRequest,
     AvatarRequest,
     ClassificationRequest,
     DescriptionRequest,
     EmbeddingRequest,
+    ExtractionRequest,
+    ImageEditRequest,
     ImageGenerationRequest,
     SpeechRequest,
     SummaryRequest,
     Transcript,
     TranscriptionRequest,
     TranslationRequest,
+    VideoGenerationRequest,
 )
 
+PROMPTED_AUDIO_TASKS = frozenset({'classify_audio', 'describe_audio'})
 TASKS = (
     'classify_text',
     'summarize',
@@ -48,6 +55,16 @@ TASKS = (
     'classify_image',
     'transcribe',
     'animate_avatar',
+    'classify_audio',
+    'classify_video',
+    'describe_audio',
+    'describe_video',
+    'extract_fields',
+    'embed_image',
+    'embed_audio',
+    'generate_video',
+    'edit_image',
+    'animate_image',
 )
 
 
@@ -79,6 +96,9 @@ class Backend(BaseEstimator):
 
     default_models: ClassVar[dict[str, str]] = {}
     supports_voice_cloning: ClassVar[bool] = False
+    supports_masks: ClassVar[bool] = False
+    accepts_audio: ClassVar[bool] = False
+    sends_video_audio: ClassVar[bool] = False
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset()
     shared_params: ClassVar[frozenset[str]] = frozenset({'client'})
 
@@ -322,11 +342,173 @@ class Backend(BaseEstimator):
         """
         raise NotImplementedError
 
+    def classify_audio(self, request: ClassificationRequest) -> dict[str, float]:
+        """Score audio against the labels of a request.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            A score per label.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def classify_video(self, request: ClassificationRequest) -> dict[str, float]:
+        """Score sampled video frames against the labels of a request.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            A score per label.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def describe_audio(self, request: DescriptionRequest) -> str:
+        """Describe audio.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The description.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def describe_video(self, request: DescriptionRequest) -> str:
+        """Describe sampled video frames.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The description.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def extract_fields(self, request: ExtractionRequest) -> dict[str, Any]:
+        """Extract named fields from a text.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The value of every field, or `None` for a field the text does not contain.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def embed_image(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Embed an image.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The embedding vector.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def embed_audio(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Embed audio.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The embedding vector.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def generate_video(self, request: VideoGenerationRequest) -> Video:
+        """Generate a video from a prompt.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The video.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def edit_image(self, request: ImageEditRequest) -> Image.Image:
+        """Edit an image with an instruction.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The edited image.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def animate_image(self, request: AnimationRequest) -> Video:
+        """Turn an image into a short video that starts from it.
+
+        Args:
+            request:
+                The request.
+
+        Returns:
+            The video.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
 
 class PromptedBackend(Backend):
     """Run text and image tasks by prompting a chat or vision model.
 
-    A subclass implements `complete`, and inherits classification, summarization, translation and image description.
+    A subclass implements `complete`, and inherits classification, summarization, translation, description and field
+    extraction. Audio tasks are supported only when the subclass sets `accepts_audio`, and video tasks include the
+    audio track only when it sets `sends_video_audio`.
 
     Args:
         model:
@@ -338,6 +520,19 @@ class PromptedBackend(Backend):
         max_concurrency:
             The maximum number of requests that run at the same time.
     """
+
+    @classmethod
+    def supported_tasks(cls) -> frozenset[str]:
+        """Return the tasks that the backend implements, without prompted audio tasks when it does not accept audio.
+
+        Returns:
+            The names of the tasks.
+        """
+        tasks = super().supported_tasks()
+        if cls.accepts_audio:
+            return tasks
+        prompted = {task for task in PROMPTED_AUDIO_TASKS if getattr(cls, task) is getattr(PromptedBackend, task)}
+        return tasks - prompted
 
     @abstractmethod
     def complete(self, prompt: Prompt, model: str) -> str:
@@ -415,3 +610,68 @@ class PromptedBackend(Backend):
         """
         answer = self.complete(build_classification_prompt(request), self.resolve_model('classify_image'))
         return parse_labels(answer, request.labels, request.multi_label)
+
+    def classify_audio(self, request: ClassificationRequest) -> dict[str, float]:
+        """Score audio by asking an audio model for its labels.
+
+        Args:
+            request:
+                The classification request.
+
+        Returns:
+            A score of one for every label the model names and zero for the others.
+        """
+        answer = self.complete(build_classification_prompt(request), self.resolve_model('classify_audio'))
+        return parse_labels(answer, request.labels, request.multi_label)
+
+    def classify_video(self, request: ClassificationRequest) -> dict[str, float]:
+        """Score sampled video frames by asking the vision model for their labels.
+
+        Args:
+            request:
+                The classification request.
+
+        Returns:
+            A score of one for every label the model names and zero for the others.
+        """
+        prompt = build_classification_prompt(request, include_audio=self.sends_video_audio)
+        answer = self.complete(prompt, self.resolve_model('classify_video'))
+        return parse_labels(answer, request.labels, request.multi_label)
+
+    def describe_audio(self, request: DescriptionRequest) -> str:
+        """Describe audio by prompting an audio model.
+
+        Args:
+            request:
+                The description request.
+
+        Returns:
+            The description.
+        """
+        return self.complete(build_description_prompt(request), self.resolve_model('describe_audio')).strip()
+
+    def describe_video(self, request: DescriptionRequest) -> str:
+        """Describe sampled video frames by prompting the vision model.
+
+        Args:
+            request:
+                The description request.
+
+        Returns:
+            The description.
+        """
+        prompt = build_description_prompt(request, include_audio=self.sends_video_audio)
+        return self.complete(prompt, self.resolve_model('describe_video')).strip()
+
+    def extract_fields(self, request: ExtractionRequest) -> dict[str, Any]:
+        """Extract fields by asking the model for a JSON object.
+
+        Args:
+            request:
+                The extraction request.
+
+        Returns:
+            The value of every field, or `None` for a field the text does not contain.
+        """
+        answer = self.complete(build_extraction_prompt(request), self.resolve_model('extract_fields'))
+        return parse_fields(answer, tuple(name for name, _ in request.fields))

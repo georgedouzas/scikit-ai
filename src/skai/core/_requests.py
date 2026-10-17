@@ -13,13 +13,36 @@ from ._media import Audio
 Timestamps: TypeAlias = Literal['segment', 'word'] | None
 
 
+@dataclass(frozen=True, eq=False)
+class VideoFrames:
+    """Hold frames sampled from a video, their times and the audio track.
+
+    Args:
+        frames:
+            The sampled frames as PIL images.
+
+        timestamps:
+            The time of every frame in seconds.
+
+        audio:
+            The mono audio track of the video.
+    """
+
+    frames: tuple[Image.Image, ...]
+    timestamps: tuple[float, ...]
+    audio: Audio
+
+
+Sample: TypeAlias = str | Image.Image | Audio | VideoFrames
+
+
 @dataclass(frozen=True)
 class ClassificationRequest:
     """Ask a backend to score a text or an image against a set of labels.
 
     Args:
         sample:
-            The text or the image to classify.
+            The text, image, audio or sampled video frames to classify.
 
         labels:
             The candidate labels.
@@ -37,7 +60,7 @@ class ClassificationRequest:
             Whether a sample can have several labels.
     """
 
-    sample: str | Image.Image
+    sample: Sample
     labels: tuple[str, ...]
     descriptions: dict[str, str] = field(default_factory=dict)
     instructions: str | None = None
@@ -87,17 +110,17 @@ class TranslationRequest:
 
 @dataclass(frozen=True)
 class EmbeddingRequest:
-    """Ask a backend to embed a text.
+    """Ask a backend to embed a text, an image or audio.
 
     Args:
-        text:
-            The text to embed.
+        sample:
+            The text, image or audio to embed.
 
         dimensions:
             The number of dimensions of the embedding, for backends that can shorten embeddings.
     """
 
-    text: str
+    sample: str | Image.Image | Audio
     dimensions: int | None = None
 
 
@@ -155,11 +178,11 @@ class ImageGenerationRequest:
 
 @dataclass(frozen=True)
 class DescriptionRequest:
-    """Ask a backend to describe an image.
+    """Ask a backend to describe an image, audio or sampled video frames.
 
     Args:
-        image:
-            The image to describe.
+        sample:
+            The image, audio or sampled video frames to describe.
 
         detail:
             `'brief'` for one sentence or `'detailed'` for a paragraph.
@@ -168,7 +191,7 @@ class DescriptionRequest:
             Extra guidance on what to describe.
     """
 
-    image: Image.Image
+    sample: Image.Image | Audio | VideoFrames
     detail: Literal['brief', 'detailed'] = 'brief'
     instructions: str | None = None
 
@@ -210,6 +233,110 @@ class AvatarRequest:
 
     avatar: Image.Image
     audio: Audio
+    seed: int | None = None
+
+
+@dataclass(frozen=True)
+class ExtractionRequest:
+    """Ask a backend to extract named fields from a text.
+
+    Args:
+        text:
+            The text to extract from.
+
+        fields:
+            The field names and their descriptions, in output order.
+    """
+
+    text: str
+    fields: tuple[tuple[str, str], ...]
+
+
+@dataclass(frozen=True)
+class VideoGenerationRequest:
+    """Ask a backend to generate a video from a prompt.
+
+    Args:
+        prompt:
+            The description of the video.
+
+        duration:
+            The length of the video in seconds.
+
+        size:
+            The width and height of the video in pixels.
+
+        fps:
+            The number of frames per second, or `None` for the model's default.
+
+        style:
+            A description of the visual style.
+
+        negative_prompt:
+            A description of what the video must not show.
+
+        seed:
+            The seed for backends that support seeding.
+    """
+
+    prompt: str
+    duration: float
+    size: tuple[int, int]
+    fps: int | None = None
+    style: str | None = None
+    negative_prompt: str | None = None
+    seed: int | None = None
+
+
+@dataclass(frozen=True, eq=False)
+class ImageEditRequest:
+    """Ask a backend to edit an image with an instruction.
+
+    Args:
+        image:
+            The image to edit.
+
+        instruction:
+            The edit to apply.
+
+        mask:
+            The region to edit, as a grayscale image where white marks the region, or `None` for the whole image.
+
+        seed:
+            The seed for backends that support seeding.
+    """
+
+    image: Image.Image
+    instruction: str
+    mask: Image.Image | None = None
+    seed: int | None = None
+
+
+@dataclass(frozen=True, eq=False)
+class AnimationRequest:
+    """Ask a backend to turn an image into a short video that starts from it.
+
+    Args:
+        image:
+            The first frame of the video.
+
+        motion_prompt:
+            A description of the motion.
+
+        duration:
+            The length of the video in seconds.
+
+        fps:
+            The number of frames per second, or `None` for the model's default.
+
+        seed:
+            The seed for backends that support seeding.
+    """
+
+    image: Image.Image
+    motion_prompt: str | None = None
+    duration: float = 2.0
+    fps: int | None = None
     seed: int | None = None
 
 

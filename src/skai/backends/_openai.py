@@ -151,7 +151,7 @@ class OpenAIBackend(PromptedBackend):
         dimensions = {'dimensions': request.dimensions} if request.dimensions else {}
         response = self._api.embeddings.create(
             model=self.resolve_model('embed_text'),
-            input=[request.text],
+            input=[request.sample],
             **dimensions,
             **self.call_options,
         )

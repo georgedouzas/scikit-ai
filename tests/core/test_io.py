@@ -17,6 +17,7 @@ from skai.core import (
     read_audio,
     read_image,
     read_video,
+    sample_frames,
 )
 from skai.description import ImageDescriptor
 from skai.generation import ImageGenerator, SpeechSynthesizer, TalkingAvatarGenerator
@@ -239,3 +240,17 @@ def test_audio_round_trips_between_components():
     speech = SpeechSynthesizer(backend='dummy').fit().predict(['hello there'])
     transcripts = SpeechTranscriber(backend='dummy').fit().predict(speech)
     assert transcripts[0].startswith('Speech of')
+
+
+def test_sample_frames_spaces_frames_evenly():
+    """Sample frames evenly over the video, starting with the first frame."""
+    frames = sample_frames(Video(np.zeros((250, 4, 4, 3), dtype=np.uint8), fps=25), 5)
+    assert frames.timestamps == (0.0, 2.0, 4.0, 6.0, 8.0)
+    assert all(isinstance(frame, Image.Image) for frame in frames.frames)
+    assert frames.audio.duration == 10.0
+
+
+def test_sample_frames_keeps_short_videos_whole():
+    """Use every frame of a video shorter than `n_frames`."""
+    frames = sample_frames(Video(np.zeros((3, 4, 4, 3), dtype=np.uint8), fps=25), 8)
+    assert len(frames.frames) == 3

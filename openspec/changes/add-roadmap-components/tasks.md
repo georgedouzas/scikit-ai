@@ -2,10 +2,10 @@
 
 ## 1. Core
 
-- [ ] 1.1 Add the request types, `VideoFrames`, the `extract_fields`, `classify_audio`, `classify_video`, `describe_audio`, `describe_video`, `embed_image`, `embed_audio`, `generate_video`, `edit_image` and `animate_image` tasks to `Backend`, and `accepts_audio`, with tests that `supported_tasks` reports them
-- [ ] 1.2 Add `sample_frames` and `Video.audio_track`, with tests for the frame sampling and audio extraction scenarios in `media-io`
-- [ ] 1.3 Add audio to `Prompt` and implement the audio, video and extraction tasks on `PromptedBackend`, with tests on a fake prompted backend
-- [ ] 1.4 Implement every new task on the `dummy` backend, and verify deterministic, correctly typed outputs per task
+- [x] 1.1 Add the request types, `VideoFrames`, the `extract_fields`, `classify_audio`, `classify_video`, `describe_audio`, `describe_video`, `embed_image`, `embed_audio`, `generate_video`, `edit_image` and `animate_image` tasks to `Backend`, and `accepts_audio`, with tests that `supported_tasks` reports them
+- [x] 1.2 Add `sample_frames` and `Video.audio_track`, with tests for the frame sampling and audio extraction scenarios in `media-io`
+- [x] 1.3 Add audio to `Prompt` and implement the audio, video and extraction tasks on `PromptedBackend`, with tests on a fake prompted backend
+- [x] 1.4 Implement every new task on the `dummy` backend, and verify deterministic, correctly typed outputs per task
 
 ## 2. Provider verification
 

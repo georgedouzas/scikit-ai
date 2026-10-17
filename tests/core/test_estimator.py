@@ -264,7 +264,7 @@ def test_embedder_marks_failed_samples():
 
         def embed_text(self, request):
             """Fail on texts that contain the word fail."""
-            if 'fail' in request.text:
+            if 'fail' in request.sample:
                 msg = 'provider error'
                 raise RuntimeError(msg)
             return super().embed_text(request)

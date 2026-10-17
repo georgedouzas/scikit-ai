@@ -20,6 +20,7 @@ from PIL import Image, UnidentifiedImageError
 
 from ._errors import InvalidSampleError, MediaReadError
 from ._media import Audio, Video
+from ._requests import VideoFrames
 
 URL_PREFIXES = ('http://', 'https://')
 URL_TIMEOUT = 30.0
@@ -263,6 +264,29 @@ def read_video(sample: object, index: int = 0) -> Video:
         msg = f'Sample {index}: cannot read a video from {type(sample).__name__}.'
         raise MediaReadError(msg)
     return Video(data=_read_source(sample, index))
+
+
+def sample_frames(video: Video, n_frames: int) -> VideoFrames:
+    """Sample evenly spaced frames of a video, starting with the first frame.
+
+    A video with fewer frames than `n_frames` gives all of its frames.
+
+    Args:
+        video:
+            The video to sample.
+
+        n_frames:
+            The number of frames to sample.
+
+    Returns:
+        The sampled frames, their times and the mono audio track.
+    """
+    frames = video.frames
+    count = min(n_frames, frames.shape[0])
+    indices = np.arange(count) * frames.shape[0] // count
+    images = tuple(Image.fromarray(frames[index]) for index in indices)
+    timestamps = tuple(float(index / video.fps) for index in indices)
+    return VideoFrames(images, timestamps, video.audio_track())
 
 
 def write_outputs(

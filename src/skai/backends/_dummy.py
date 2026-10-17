@@ -11,12 +11,15 @@ from numpy.typing import NDArray
 from PIL import Image
 
 from skai.core import (
+    AnimationRequest,
     Audio,
     AvatarRequest,
     Backend,
     ClassificationRequest,
     DescriptionRequest,
     EmbeddingRequest,
+    ExtractionRequest,
+    ImageEditRequest,
     ImageGenerationRequest,
     Segment,
     SpeechRequest,
@@ -25,12 +28,16 @@ from skai.core import (
     TranscriptionRequest,
     TranslationRequest,
     Video,
+    VideoFrames,
+    VideoGenerationRequest,
 )
 
 SAMPLE_RATE = 16000
 FRAMES_PER_SECOND = 25
 EMBEDDING_DIMENSIONS = 8
 AVATAR_SIZE = 64
+VIDEO_FPS = 8
+EDIT_STRENGTH = 0.5
 SPEECH_SECONDS_PER_WORD = 0.1
 SPEECH_PADDING_SECONDS = 0.2
 
@@ -45,6 +52,8 @@ def _to_bytes(part: Any) -> bytes:
         return part.tobytes()
     if isinstance(part, Audio):
         return part.samples.tobytes()
+    if isinstance(part, VideoFrames):
+        return b''.join(frame.tobytes() for frame in part.frames)
     return repr(part).encode()
 
 
@@ -54,6 +63,18 @@ def _seed_of(*parts: Any) -> int:
     for part in parts:
         seed = zlib.crc32(_to_bytes(part), seed)
     return seed
+
+
+def _color_of(*parts: Any) -> tuple[int, int, int]:
+    """Derive an RGB color from the parts of a request."""
+    red, green, blue = (int(value) for value in np.random.default_rng(_seed_of(*parts)).integers(0, 256, size=3))
+    return red, green, blue
+
+
+def _still_video(image: Image.Image, duration: float, fps: int) -> Video:
+    """Repeat an image for the length of a video."""
+    frames = np.repeat(np.asarray(image.convert('RGB'))[np.newaxis], max(1, round(duration * fps)), axis=0)
+    return Video(frames, fps)
 
 
 def _score_labels(request: ClassificationRequest) -> dict[str, float]:
@@ -88,6 +109,9 @@ class DummyBackend(Backend):
     """
 
     supports_voice_cloning: ClassVar[bool] = True
+    supports_masks: ClassVar[bool] = True
+    accepts_audio: ClassVar[bool] = True
+    sends_video_audio: ClassVar[bool] = True
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
 
     def classify_text(self, request: ClassificationRequest) -> dict[str, float]:
@@ -136,7 +160,7 @@ class DummyBackend(Backend):
         Returns:
             A vector with `dimensions` entries, or 8 when `dimensions` is `None`.
         """
-        rng = np.random.default_rng(_seed_of(request.text))
+        rng = np.random.default_rng(_seed_of(request.sample))
         return rng.standard_normal(request.dimensions or EMBEDDING_DIMENSIONS)
 
     def synthesize_speech(self, request: SpeechRequest) -> Audio:
@@ -164,9 +188,8 @@ class DummyBackend(Backend):
         Returns:
             An RGB image of the requested size.
         """
-        rng = np.random.default_rng(_seed_of(request.prompt, request.style, request.negative_prompt, request.seed))
-        red, green, blue = (int(value) for value in rng.integers(0, 256, size=3))
-        return Image.new('RGB', request.size, (red, green, blue))
+        color = _color_of(request.prompt, request.style, request.negative_prompt, request.seed)
+        return Image.new('RGB', request.size, color)
 
     def describe_image(self, request: DescriptionRequest) -> str:
         """Return a sentence that states the size of the image.
@@ -178,7 +201,8 @@ class DummyBackend(Backend):
         Returns:
             The description.
         """
-        width, height = request.image.size
+        assert isinstance(request.sample, Image.Image)
+        width, height = request.sample.size
         description = f'A {request.detail} description of a {width}x{height} image.'
         return f'{description} {request.instructions}' if request.instructions else description
 
@@ -229,3 +253,136 @@ class DummyBackend(Backend):
         n_frames = max(1, round(request.audio.duration * FRAMES_PER_SECOND))
         frames = np.repeat(np.asarray(avatar)[np.newaxis], n_frames, axis=0)
         return Video(frames, FRAMES_PER_SECOND, request.audio)
+
+    def classify_audio(self, request: ClassificationRequest) -> dict[str, float]:
+        """Return deterministic scores derived from the audio.
+
+        Args:
+            request:
+                The classification request.
+
+        Returns:
+            A score per label. The scores sum to one unless the request is multilabel.
+        """
+        return _score_labels(request)
+
+    def classify_video(self, request: ClassificationRequest) -> dict[str, float]:
+        """Return deterministic scores derived from the sampled frames.
+
+        Args:
+            request:
+                The classification request.
+
+        Returns:
+            A score per label. The scores sum to one unless the request is multilabel.
+        """
+        return _score_labels(request)
+
+    def describe_audio(self, request: DescriptionRequest) -> str:
+        """Return a sentence that states the length of the audio.
+
+        Args:
+            request:
+                The description request.
+
+        Returns:
+            The description.
+        """
+        assert isinstance(request.sample, Audio)
+        return f'A {request.detail} description of {request.sample.duration:.2f} seconds of audio.'
+
+    def describe_video(self, request: DescriptionRequest) -> str:
+        """Return a sentence that states the number of sampled frames and the length of the video.
+
+        Args:
+            request:
+                The description request.
+
+        Returns:
+            The description.
+        """
+        assert isinstance(request.sample, VideoFrames)
+        frames, seconds = len(request.sample.frames), request.sample.audio.duration
+        return f'A {request.detail} description of {frames} frames of a {seconds:.2f} second video.'
+
+    def extract_fields(self, request: ExtractionRequest) -> dict[str, Any]:
+        """Return a word of the text for every field whose name appears in it, and `None` otherwise.
+
+        Args:
+            request:
+                The extraction request.
+
+        Returns:
+            The value of every field.
+        """
+        words = request.text.split()
+        return {
+            name: words[_seed_of(name, request.text) % len(words)] if name.lower() in request.text.lower() else None
+            for name, _ in request.fields
+        }
+
+    def embed_image(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Return a deterministic random vector derived from the image.
+
+        Args:
+            request:
+                The embedding request.
+
+        Returns:
+            A vector with `dimensions` entries, or 8 when `dimensions` is `None`.
+        """
+        return self.embed_text(request)
+
+    def embed_audio(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Return a deterministic random vector derived from the audio.
+
+        Args:
+            request:
+                The embedding request.
+
+        Returns:
+            A vector with `dimensions` entries, or 8 when `dimensions` is `None`.
+        """
+        return self.embed_text(request)
+
+    def generate_video(self, request: VideoGenerationRequest) -> Video:
+        """Return a video of one color derived from the request.
+
+        Args:
+            request:
+                The video generation request.
+
+        Returns:
+            A video of the requested duration and size, at `fps` or 8 frames per second.
+        """
+        color = _color_of(request.prompt, request.style, request.negative_prompt, request.seed)
+        return _still_video(Image.new('RGB', request.size, color), request.duration, request.fps or VIDEO_FPS)
+
+    def edit_image(self, request: ImageEditRequest) -> Image.Image:
+        """Blend the image with a color derived from the instruction, inside the mask when one is given.
+
+        Args:
+            request:
+                The image edit request.
+
+        Returns:
+            The edited image, of the size of the input.
+        """
+        original = request.image.convert('RGB')
+        tint = Image.new('RGB', original.size, _color_of(request.instruction, request.seed))
+        edited = Image.blend(original, tint, EDIT_STRENGTH)
+        if request.mask is None:
+            return edited
+        return Image.composite(edited, original, request.mask.convert('L').resize(original.size))
+
+    def animate_image(self, request: AnimationRequest) -> Video:
+        """Return the still image repeated for the length of the video.
+
+        Args:
+            request:
+                The animation request.
+
+        Returns:
+            A video of the requested duration, at `fps` or 8 frames per second.
+        """
+        return _still_video(request.image, request.duration, request.fps or VIDEO_FPS)

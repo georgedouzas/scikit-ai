@@ -187,7 +187,7 @@ class HFBackend(PromptedBackend):
             ('embed_text', model),
             lambda: sentence_transformers.SentenceTransformer(model, device=self.device),
         )
-        return np.asarray(encoder.encode([request.text], **self.call_options)[0])
+        return np.asarray(encoder.encode([request.sample], **self.call_options)[0])
 
     def synthesize_speech(self, request: SpeechRequest) -> Audio:
         """Speak a text with a text-to-speech model.

@@ -54,3 +54,18 @@ def test_video_without_audio_decodes_to_no_track():
     """Decode a video without an audio track to `audio=None`."""
     encoded = Video(np.zeros((5, 8, 8, 3), dtype=np.uint8), fps=5).to_bytes()
     assert Video(data=encoded).audio is None
+
+
+def test_video_audio_track_is_mono(audio):
+    """Return the audio track mixed to mono."""
+    stereo = Audio(np.stack([audio.samples, audio.samples], axis=1), audio.sample_rate)
+    track = Video(np.zeros((25, 4, 4, 3), dtype=np.uint8), fps=25, audio=stereo).audio_track()
+    assert track.samples.ndim == 1
+    assert track.duration == 1.0
+
+
+def test_video_without_audio_gives_silence():
+    """Return silence as long as the video when it has no audio track."""
+    track = Video(np.zeros((50, 4, 4, 3), dtype=np.uint8), fps=25).audio_track()
+    assert track.duration == 2.0
+    assert not track.samples.any()

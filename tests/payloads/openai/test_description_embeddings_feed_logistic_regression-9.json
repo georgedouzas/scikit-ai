@@ -1,0 +1,27 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "encoding_format": "base64",
+    "input": [
+      "A single shiny red apple with a short stem sits on a pale surface against a neutral background."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "<8192 characters>",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 19,
+      "total_tokens": 19
+    }
+  },
+  "status": 200
+}

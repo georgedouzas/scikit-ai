@@ -76,7 +76,7 @@ Every embedder SHALL work as the first step before any scikit-learn estimator th
 - **THEN** the classifier is fitted on the concatenated vectors
 
 ### Requirement: Pipeline steps run once per fit
-Fitting a pipeline SHALL run each generator step once over the training samples, and SHALL NOT call any backend during `fit` of a generator that is the final step.
+Fitting a pipeline SHALL run each generator step once over the training samples, and a generator that is the final step SHALL call its backend during `fit` only to learn from the references it is given.
 
 #### Scenario: One backend call per sample
 - **WHEN** a pipeline of `SpeechTranscriber` and `TextClassifier` is fitted on 10 recordings

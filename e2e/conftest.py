@@ -83,6 +83,18 @@ def openai_backend(request: pytest.FixtureRequest) -> Iterator[OpenAIBackend]:
 
 
 @pytest.fixture(scope='session')
+def shared_images(require_openai_key: None) -> list[Any]:
+    """Generate an apple and a car image once for every test that needs them."""
+    openai = import_optional('openai', 'openai')
+    from skai.generation import ImageGenerator  # noqa: PLC0415 - imported after the credentials are loaded
+
+    with httpx.Client(event_hooks={'response': [Recorder('shared-images')]}, timeout=TIMEOUT) as http_client:
+        backend = OpenAIBackend(client=openai.OpenAI(http_client=http_client))
+        prompts = ['A single red apple on a white table', 'A small blue car parked on an empty street']
+        return list(ImageGenerator(size=(1024, 1024), backend=backend).fit().predict(prompts))
+
+
+@pytest.fixture(scope='session')
 def video_enabled() -> bool:
     """Return whether the costly video generation tests were requested."""
     return os.environ.get('SKAI_E2E_VIDEO') == '1'

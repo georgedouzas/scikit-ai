@@ -4,7 +4,7 @@
   "request": {
     "encoding_format": "base64",
     "input": [
-      "Interest rates rose by half a percent."
+      "The cat sat on the mat."
     ],
     "model": "text-embedding-3-small"
   },
@@ -19,8 +19,8 @@
     "model": "text-embedding-3-small",
     "object": "list",
     "usage": {
-      "prompt_tokens": 8,
-      "total_tokens": 8
+      "prompt_tokens": 7,
+      "total_tokens": 7
     }
   },
   "status": 200

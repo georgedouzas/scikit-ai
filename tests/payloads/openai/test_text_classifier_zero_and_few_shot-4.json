@@ -10,7 +10,7 @@
       {
         "content": [
           {
-            "text": "Labels:\n- negative\n- positive\n\nExample 1:\nInput: Awful quality.\nOutput: negative\n\nExample 2:\nInput: Great value.\nOutput: positive\n\nInput: Terrible. It broke on day one and support ignored me.\nOutput:",
+            "text": "Labels:\n- negative\n- positive\n\nExample 1:\nInput: Awful quality.\nOutput: negative\n\nExample 2:\nInput: Great value.\nOutput: positive\n\nInput: Absolutely wonderful, I love it!\nOutput:",
             "type": "text"
           }
         ],
@@ -26,32 +26,32 @@
         "index": 0,
         "message": {
           "annotations": [],
-          "content": "negative",
+          "content": "positive",
           "refusal": null,
           "role": "assistant"
         }
       }
     ],
-    "created": 1792232907,
-    "id": "chatcmpl-EZvwJkE69WD2t0eaCNcP9aQK2IbZT",
+    "created": 1792256982,
+    "id": "chatcmpl-Ea2CcKM2uOpGyFx7dUjG11l0f9oLU",
     "model": "gpt-5-mini-2025-08-07",
     "object": "chat.completion",
     "service_tier": "default",
     "system_fingerprint": null,
     "usage": {
-      "completion_tokens": 74,
+      "completion_tokens": 10,
       "completion_tokens_details": {
         "accepted_prediction_tokens": 0,
         "audio_tokens": 0,
-        "reasoning_tokens": 64,
+        "reasoning_tokens": 0,
         "rejected_prediction_tokens": 0
       },
-      "prompt_tokens": 81,
+      "prompt_tokens": 75,
       "prompt_tokens_details": {
         "audio_tokens": 0,
         "cached_tokens": 0
       },
-      "total_tokens": 155
+      "total_tokens": 85
     }
   },
   "status": 200

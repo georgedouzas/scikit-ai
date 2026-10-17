@@ -1,0 +1,27 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "encoding_format": "base64",
+    "input": [
+      "A small bright blue vintage hatchback is parked on the street in front of a beige building with a door and two windows."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "<8192 characters>",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 25,
+      "total_tokens": 25
+    }
+  },
+  "status": 200
+}

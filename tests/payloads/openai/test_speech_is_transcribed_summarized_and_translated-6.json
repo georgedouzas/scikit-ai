@@ -1,0 +1,58 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You translate texts. Answer with the translation only.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Translate the following text into Greek.\n\nThis week: billing system completed; monthly invoices automated. Next week: mobile app testing with 10 customers.",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "\u0391\u03c5\u03c4\u03ae \u03c4\u03b7\u03bd \u03b5\u03b2\u03b4\u03bf\u03bc\u03ac\u03b4\u03b1: \u03c4\u03bf \u03c3\u03cd\u03c3\u03c4\u03b7\u03bc\u03b1 \u03c4\u03b9\u03bc\u03bf\u03bb\u03cc\u03b3\u03b7\u03c3\u03b7\u03c2 \u03bf\u03bb\u03bf\u03ba\u03bb\u03b7\u03c1\u03ce\u03b8\u03b7\u03ba\u03b5\u00b7 \u03c4\u03b1 \u03bc\u03b7\u03bd\u03b9\u03b1\u03af\u03b1 \u03c4\u03b9\u03bc\u03bf\u03bb\u03cc\u03b3\u03b9\u03b1 \u03b1\u03c5\u03c4\u03bf\u03bc\u03b1\u03c4\u03bf\u03c0\u03bf\u03b9\u03ae\u03b8\u03b7\u03ba\u03b1\u03bd. \u03a4\u03b7\u03bd \u03b5\u03c0\u03cc\u03bc\u03b5\u03bd\u03b7 \u03b5\u03b2\u03b4\u03bf\u03bc\u03ac\u03b4\u03b1: \u03b4\u03bf\u03ba\u03b9\u03bc\u03ad\u03c2 \u03c4\u03b7\u03c2 \u03b5\u03c6\u03b1\u03c1\u03bc\u03bf\u03b3\u03ae\u03c2 \u03b3\u03b9\u03b1 \u03ba\u03b9\u03bd\u03b7\u03c4\u03ac \u03bc\u03b5 10 \u03c0\u03b5\u03bb\u03ac\u03c4\u03b5\u03c2.",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792257152,
+    "id": "chatcmpl-Ea2FMCZunjiDwZlpNrLbN34XOvs5D",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 776,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 704,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 49,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 825
+    }
+  },
+  "status": 200
+}

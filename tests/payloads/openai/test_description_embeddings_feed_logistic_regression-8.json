@@ -1,0 +1,27 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "encoding_format": "base64",
+    "input": [
+      "A bright blue vintage compact car is parked along the curb in front of a beige residential building with two windows and a central door."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "<8192 characters>",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 26,
+      "total_tokens": 26
+    }
+  },
+  "status": 200
+}

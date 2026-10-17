@@ -4,7 +4,7 @@
   "request": {
     "encoding_format": "base64",
     "input": [
-      "The cat sat on the mat."
+      "A cat was sitting on the rug."
     ],
     "model": "text-embedding-3-small"
   },
@@ -19,8 +19,8 @@
     "model": "text-embedding-3-small",
     "object": "list",
     "usage": {
-      "prompt_tokens": 7,
-      "total_tokens": 7
+      "prompt_tokens": 8,
+      "total_tokens": 8
     }
   },
   "status": 200

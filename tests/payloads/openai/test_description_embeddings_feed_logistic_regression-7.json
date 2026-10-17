@@ -1,0 +1,64 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You describe images, audio and videos. Answer with the description only.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "<image 1>\n\nDescribe the image in one sentence.",
+            "type": "text"
+          },
+          {
+            "image_url": {
+              "url": "<1865146 characters>"
+            },
+            "type": "image_url"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "A single shiny red apple with a short stem sits on a pale surface against a neutral background.",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792257188,
+    "id": "chatcmpl-Ea2FwDLNrGrmL4n9aKy1seR7ZAS8v",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 92,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 64,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 1264,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 1024
+      },
+      "total_tokens": 1356
+    }
+  },
+  "status": 200
+}

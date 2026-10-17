@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/speech",
+  "request": {
+    "input": "Welcome to the weekly update. This week the team finished the new billing system, which now sends invoices automatically at the end of every month. Next week we will start testing the mobile app with ten customers.",
+    "model": "gpt-4o-mini-tts",
+    "response_format": "wav",
+    "voice": "alloy"
+  },
+  "response": {
+    "bytes": 633644,
+    "content_type": "audio/wav"
+  },
+  "status": 200
+}

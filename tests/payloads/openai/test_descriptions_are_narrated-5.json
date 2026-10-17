@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/speech",
+  "request": {
+    "input": "A small vintage blue hatchback is parked on the street in front of a beige building with barred and shuttered windows.",
+    "model": "gpt-4o-mini-tts",
+    "response_format": "wav",
+    "voice": "alloy"
+  },
+  "response": {
+    "bytes": 343244,
+    "content_type": "audio/wav"
+  },
+  "status": 200
+}

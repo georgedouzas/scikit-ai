@@ -32,18 +32,18 @@
         }
       }
     ],
-    "created": 1792232903,
-    "id": "chatcmpl-EZvwFpBbGBud0Ja0DBEFs7NWo5Xe5",
+    "created": 1792256977,
+    "id": "chatcmpl-Ea2CXADWoiPmV0ZRH6J3nEegze35N",
     "model": "gpt-5-mini-2025-08-07",
     "object": "chat.completion",
     "service_tier": "default",
     "system_fingerprint": null,
     "usage": {
-      "completion_tokens": 141,
+      "completion_tokens": 77,
       "completion_tokens_details": {
         "accepted_prediction_tokens": 0,
         "audio_tokens": 0,
-        "reasoning_tokens": 128,
+        "reasoning_tokens": 64,
         "rejected_prediction_tokens": 0
       },
       "prompt_tokens": 29,
@@ -51,7 +51,7 @@
         "audio_tokens": 0,
         "cached_tokens": 0
       },
-      "total_tokens": 170
+      "total_tokens": 106
     }
   },
   "status": 200

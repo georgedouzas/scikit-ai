@@ -205,15 +205,31 @@ conventions are the taste it cannot check.
   and MUST stay consistent with this constitution.
 ## Project Profile: scikit-ai
 
-This section instantiates the body above for this repository. It is the repo-specific part, and it is a starting point
-to fill in as the project takes shape.
+This section instantiates the body above for this repository. It is the repo-specific part, and it grows as the
+project takes shape.
 
-- Ecosystem contract: TODO name the framework contract this project conforms to (for example, an estimator or plugin
-  contract, a web framework's application contract, or none if the project defines its own).
+- Ecosystem contract: the scikit-learn estimator API. Components are estimators that take keyword-only constructor
+  parameters, validate them in `fit` through `_parameter_constraints`, expose learned state with a trailing
+  underscore, and implement `predict`, `predict_proba` or `transform`. Backends are scikit-learn estimators too, so
+  their parameters can be tuned as nested parameters.
+- Scope: task-oriented components whose primary input is text, an image, audio or video. Reinforcement learning,
+  agents, chat APIs and tabular data are out of scope.
+- Default models: every component and every provider-only backend string has a documented default model. This is a
+  deliberate exception to the rule that the choice of model stays with the caller, so the components follow the
+  scikit-learn practice of useful defaults. The caller can always override the model with `backend`.
+- Delivery surfaces: the importable packages `skai.text`, `skai.image`, `skai.audio`, `skai.backends` and `skai.core`.
+  The shared leaves live in `skai.core`, and imports run from `skai.core` to `skai.backends` to the component packages.
 - Language: Python >=3.11, <3.14.
-- Build and tooling: PDM with SCM-derived versioning and a `src`
-  layout. The `nox` sessions are `formatting`, `checks`, `tests`, `docs`, `changelog`, and `release`. The gate covers
-  `ruff`, `mypy`, `bandit`, `pip-audit`, `deptry`, `pydoclint`, and `interrogate`, with `pytest` under branch coverage
-  and randomized ordering.
+- Dependencies: `scikit-learn`, `numpy`, `pillow`, `soundfile` and `httpx` are required. Providers and video codecs are
+  optional extras: `openai`, `hf`, `litellm`, `replicate`, `video` and `all`.
+- Credentials: backends take the name of the environment variable that holds a secret, such as `api_key_env`, and
+  read it when the client is created.
+- Build and tooling: PDM with SCM-derived versioning and a `src` layout. The `nox` sessions are `formatting`,
+  `checks`, `tests`, `docs`, `changelog`, and `release`. The gate covers `ruff`, `mypy`, `bandit`, `pip-audit`,
+  `deptry`, `pydoclint`, and `interrogate`, with `pytest` under branch coverage and randomized ordering. The
+  documentation builds in strict mode and executes every example, and a test runs every docstring and README example.
+- Tests: tests run offline. A fixture fails any connection to a host other than the local machine, and providers are
+  tested against fake clients and modules.
 - Layout: library. The importable package under `src/skai` is distributed to others.
-**Version**: 1.0.0 | **Ratified**: 2024-01-01 | **Last Amended**: 2024-01-01
+
+**Version**: 1.1.0 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-17

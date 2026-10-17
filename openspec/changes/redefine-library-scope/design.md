@@ -24,15 +24,19 @@ committed lock).
 ### Package layout by primary input type
 ```
 skai/
-  base.py            # BaseMediaEstimator, GeneratorMixin, MediaClassifierMixin, EmbedderMixin
-  io/                # input coercion per modality, Audio/Video containers, output writers
-  backends/          # Backend base, registry, string parsing, providers/{dummy,openai,hf,litellm,replicate}.py
-  text/              # TextClassifier, TextSummarizer, TextTranslator, TextEmbedder, SpeechSynthesizer, ImageGenerator
-  image/             # ImageDescriptor, ImageClassifier
-  audio/             # SpeechTranscriber, TalkingAvatarGenerator
+  __init__.py        # front page docstring, re-exports nothing but subpackages' public names via subpackages
+  core/              # shared leaves: _errors, _types, _io (coercion, Audio/Video, writers), _estimator (bases), _backend (Backend base, registry)
+  backends/          # _dummy, _openai, _hf, _litellm, _replicate; re-exports backend classes and `register`
+  text/              # _classifier, _summarizer, _translator, _embedder, _synthesizer, _image_generator
+  image/             # _descriptor, _classifier
+  audio/             # _transcriber, _avatar
 ```
-All public components are also re-exported from `skai`. Organizing by task was the alternative. It was rejected
-because the user picks a module by what data they hold.
+Imports run downward: `core` → `backends` → `text`/`image`/`audio`. Each package `__init__` re-exports its own
+public names with `__all__`, and `skai/__init__.py` keeps the docstring only, so users import from `skai.text`,
+`skai.image`, `skai.audio`, `skai.backends` and `skai.core`. Named exceptions (`UnsupportedBackendError(ValueError)`,
+`MissingExtraError(ImportError)`, `MissingCredentialError`, `MediaReadError(ValueError)`) live in `core._errors`
+and are re-exported from `skai.core`. Organizing by task was the alternative. It was rejected because the user picks
+a module by what data they hold.
 
 ### Components declare a task, backends implement tasks
 Each component has a class-level `_task` (e.g. `"summarize"`), and a typed request/response contract lives with
@@ -44,9 +48,9 @@ pair, like today's `OpenAIClassifier`. That grows as components × providers and
 ### Backend objects are estimators-lite; strings are sugar
 `Backend` subclasses `sklearn.base.BaseEstimator` for `get_params`/`set_params`/`clone`, so
 `backend__model` works in `GridSearchCV`. `"openai:gpt-5-mini"` is parsed by the registry into
-`OpenAIBackend(model="gpt-5-mini")`, and `"openai"` gets the provider's per-task default model. Secrets are
-held in a private attribute that `get_params` omits and `__repr__` masks. Clients are created lazily in `fit`
-and not deep-copied by `clone`.
+`OpenAIBackend(model="gpt-5-mini")`, and `"openai"` gets the provider's per-task default model. Following the
+constitution's credential rule, backends take `api_key_env` (the variable name) and read the secret only when the
+client is created in `fit`, so no secret is ever a parameter. A user-supplied `client` object is used as is.
 
 ### Registry
 `skai.backends.register(name, backend_cls)`. The class declares `supported_tasks` and
@@ -68,26 +72,40 @@ demand. `TalkingAvatarGenerator` has no well-packaged local implementation, so i
 open-source model. That is the case the backends spec allows for.
 
 ### Prompted tasks share one adapter path
-Classification, summarization, translation and description on LLM-style providers share a prompt-building
-helper per task and one "chat/vision completion" call per backend. Classification asks for structured output
-restricted to `classes_`. `predict_proba` uses token logprobs where the provider exposes them, and one-hot on
-the parsed label otherwise (documented per backend). This keeps today's `k_shot` semantics.
+Classification, summarization, translation and description on LLM-style providers share one prompt builder per task
+in `core._prompts` and one `complete(prompt, model)` method per backend (`PromptedBackend`). Classification asks for
+labels only, and the answer is matched against `classes_`. Prompted backends score one for every named label and zero
+for the others, so `predict_proba` is one-hot for them. Token log-probabilities were left out because providers expose
+them inconsistently. The `hf` backend uses zero-shot NLI and CLIP models instead, which return real scores. This keeps
+today's `k_shot` semantics.
+
+### Default models are a documented exception
+The constitution leaves the choice of model with the caller. scikit-learn-style defaults are kept on purpose: every
+component and every provider-only string has a documented default model. The Project Profile records this
+exception, and the caller can always override it with `backend`.
+
+### Tests never reach the network
+Provider adapters are tested against fake clients and recorded payloads. A `conftest.py` socket guard fails any
+test that opens a connection. Real-provider runs are left to the user and are not part of the suite.
 
 ### Batching and concurrency
-`batch_size` (default per backend) groups samples. Cloud backends issue requests concurrently with a bounded
-semaphore (`max_concurrency` on the backend object), and local backends run batches through the model. Results
-are reassembled by index, which keeps input order. Calls run on an internal event loop, so `predict` stays
-synchronous and also works inside Jupyter's running loop (via a worker thread).
+`batch_size` on the component groups samples. Each batch is passed to `Backend.run`, which runs the requests on a
+thread pool of `max_concurrency` workers (one for the local `hf` backend) and returns a result or an exception per
+request. Results are reassembled by index, which keeps input order, and `predict` stays synchronous, also inside
+Jupyter. Threads were chosen over an event loop because provider SDKs and local pipelines are mostly synchronous.
 
 ### Media I/O
-- Inputs are coerced per modality by `skai.io` into a provider-neutral form (PIL image; `Audio(samples, sample_rate)`;
-  `Video` lazy file handle). URLs are fetched with a timeout.
+- `core._io` coerces inputs per modality into a provider-neutral form (PIL image, `Audio(samples, sample_rate)`,
+  `Video`). URLs are fetched with `httpx` and a timeout.
+- `Video` holds decoded frames or encoded MP4 bytes and converts lazily between them with PyAV, so the `video` extra is
+  needed only when a conversion happens.
 - Outputs: `output_format="object"` → PIL / `Audio` / `Video`. `"bytes"` → PNG / WAV / MP4. `"path"` → files named
-  `<component>-<uuid>.<ext>` in `output_dir` or a `tempfile.mkdtemp()` directory.
-- Base dependencies add `numpy`, `Pillow`, `soundfile`. Video decoding/encoding (`av`) goes in the `video` extra.
+  `<component>-<uuid>.<ext>`, opened in exclusive mode, in `output_dir` or a `tempfile.mkdtemp()` directory.
+- Base dependencies add `numpy`, `Pillow`, `soundfile` and `httpx`.
 
 ### Dependencies and extras
-Required dependencies: `scikit-learn`, `numpy`, `Pillow`, `soundfile`, `httpx`. Extras: `openai`, `hf` (torch,
+Required dependencies: `scikit-learn`, `numpy`, `Pillow`, `soundfile`, `httpx`. Built-in backends are registered as
+`skai.backends` entry points, so `core` never imports `backends`. Extras: `openai`, `hf` (torch,
 transformers, sentence-transformers, diffusers, accelerate), `litellm`, `replicate`, `video`, `all`. A missing
 extra raises `ImportError` naming `pip install scikit-ai[<extra>]`. `python-dotenv` is dropped, and loading `.env`
 is left to the user.

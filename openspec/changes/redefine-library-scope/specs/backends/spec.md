@@ -19,7 +19,7 @@ Every component SHALL accept `backend` as a string `"<provider>"` or `"<provider
 - **THEN** the component uses the Hugging Face provider's documented default transcription model
 
 ### Requirement: Backend selected by object
-Every component SHALL accept `backend` as a backend object carrying provider settings (model, credentials, client, endpoint, generation options). Backend objects SHALL support `get_params`/`set_params` so nested parameters such as `backend__model` can be tuned with `GridSearchCV`.
+Every component SHALL accept `backend` as a backend object carrying provider settings (model, credential variable name, client, endpoint, generation options). Backend objects SHALL support `get_params`/`set_params` so nested parameters such as `backend__model` can be tuned with `GridSearchCV`.
 
 #### Scenario: Nested parameter search
 - **WHEN** `GridSearchCV` searches `{"backend__model": [m1, m2]}` over a `TextClassifier` with a backend object
@@ -55,15 +55,19 @@ A component SHALL raise `ValueError` at `fit` when the provider is unknown or do
 - **THEN** `ValueError` is raised listing the supported providers
 
 ### Requirement: Credentials handling
-Cloud backends SHALL read credentials from explicit backend-object arguments first, then from the provider's standard environment variables. Credentials SHALL NOT appear in `repr`, `get_params` output, logs, warnings or exception messages.
+Cloud backends SHALL take credentials by name only: an `api_key_env` parameter holding the name of the environment variable to read, defaulting to the provider's standard variable. The secret SHALL be read when the backend client is created and SHALL NOT be stored in parameters, `repr`, logs, warnings or exception messages.
+
+#### Scenario: Custom variable name
+- **WHEN** a backend object is constructed with `api_key_env="MY_OPENAI_KEY"` and fitted
+- **THEN** the client is created with the value of `MY_OPENAI_KEY`
 
 #### Scenario: Missing credentials
-- **WHEN** a cloud backend is fitted with no credentials available
-- **THEN** an error names the environment variable to set, without printing any secret
+- **WHEN** a cloud backend is fitted and the named environment variable is not set
+- **THEN** an error names the variable to set, without printing any secret
 
-#### Scenario: Secret hidden from repr
-- **WHEN** a backend object constructed with `api_key="sk-123"` is printed
-- **THEN** the output does not contain `sk-123`
+#### Scenario: Secret absent from parameters
+- **WHEN** `get_params()` and `repr` are called on a fitted cloud backend
+- **THEN** neither contains the value of the credential variable
 
 ### Requirement: Custom backend registration
 The library SHALL provide a public way to register a third-party provider under a name, declaring which tasks it supports, after which the name is usable in backend strings.

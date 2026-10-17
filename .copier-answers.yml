@@ -10,9 +10,7 @@ copyright_license: MIT License
 git_provider: GitHub
 include_dockerfile: false
 package_manager: PDM
-project_description: A unified AI library that brings together classical Machine Learning,
-    Reinforcement Learning, and Large Language Models under a consistent and simple
-    interface.
+project_description: Task-oriented components for text, images, audio and video with a scikit-learn API, powered by open-source models or cloud APIs.
 project_layout: library
 publish_pypi: true
 python_package_distribution_name: scikit-ai

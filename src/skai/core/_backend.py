@@ -17,6 +17,7 @@ from sklearn.base import BaseEstimator, clone
 from ._errors import UnsupportedBackendError
 from ._media import Audio, Video
 from ._prompts import (
+    FineTuneRequest,
     Prompt,
     build_classification_prompt,
     build_description_prompt,
@@ -65,6 +66,7 @@ TASKS = (
     'generate_video',
     'edit_image',
     'animate_image',
+    'fine_tune',
 )
 
 
@@ -98,6 +100,10 @@ class Backend(BaseEstimator):
     supports_voice_cloning: ClassVar[bool] = False
     supports_masks: ClassVar[bool] = False
     accepts_audio: ClassVar[bool] = False
+    accepts_context: ClassVar[bool] = False
+    shortens_embeddings: ClassVar[bool] = False
+    avatar_size: ClassVar[int | None] = None
+    min_finetune_examples: ClassVar[int] = 10
     sends_video_audio: ClassVar[bool] = False
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset()
     shared_params: ClassVar[frozenset[str]] = frozenset({'client'})
@@ -495,6 +501,22 @@ class Backend(BaseEstimator):
 
         Returns:
             The video.
+
+        Raises:
+            NotImplementedError:
+                If the backend does not support the task.
+        """
+        raise NotImplementedError
+
+    def fine_tune(self, request: FineTuneRequest) -> str:
+        """Train a model on prompts and their expected answers, and wait until it is ready.
+
+        Args:
+            request:
+                The fine-tuning request.
+
+        Returns:
+            The id of the trained model.
 
         Raises:
             NotImplementedError:

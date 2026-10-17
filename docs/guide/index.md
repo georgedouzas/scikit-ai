@@ -9,11 +9,14 @@ Every component is configured with keyword parameters, is fitted with `fit`, and
 `predict_proba` or `transform`:
 
 - Generators, such as `TextSummarizer` or `ImageGenerator`, return one output per sample from both `predict` and
-  `transform`, so they can be the last step or an intermediate step of a `Pipeline`. They learn nothing from data, so
-  `fit()` only validates the parameters and resolves the backend.
+  `transform`, so they can be the last step or an intermediate step of a `Pipeline`. Supervised generators learn
+  from reference outputs given as `y`, and the others prepare their conditioning, such as a voice or a portrait.
 - Classifiers, `TextClassifier` and `ImageClassifier`, learn the classes from the targets, or take them from `labels`
-  for zero-shot classification, and pass `k_shot` training samples to the backend as examples.
-- Embedders, such as `TextEmbedder`, return a float array from `transform` that any scikit-learn model can use.
+  for zero-shot classification, and pass training samples to the backend as examples, one per class by default.
+- Embedders, such as `TextEmbedder`, learn centering and an optional projection from `X`, and return a float array
+  from `transform` that any scikit-learn model can use.
+
+[What fit learns](fit.md) lists what every component learns, and how pipelines and fine-tuning work.
 
 Calling `predict` or `transform` before `fit` raises `NotFittedError`, and invalid parameters raise
 `InvalidParameterError` at `fit` time.
@@ -46,4 +49,5 @@ Every component takes the same execution parameters:
 - [Backends](backends.md) explains how to choose and configure where components run.
 - [Classification](classification.md), [description](description.md), [transcription](transcription.md),
   [text](text.md), [embedding](embedding.md) and [generation](generation.md) describe every component.
+- [What fit learns](fit.md) explains learning from data, `use_y` in pipelines, and fine-tuning.
 - [Migrating from 0.1](migration.md) maps the removed `OpenAIClassifier` to `TextClassifier`.

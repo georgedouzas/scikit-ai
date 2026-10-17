@@ -16,7 +16,8 @@ Version 0.2 refocuses scikit-ai on task-oriented components for text, images, au
 | `OpenAIClassifier(openai_client=client)` | `TextClassifier(backend=OpenAIBackend(client=client))` |
 | `OpenAIClassifier(responses_kwargs={...})` | `TextClassifier(backend=OpenAIBackend(options={...}))` |
 
-Constructor parameters are keyword-only. `k_shot=None` now means zero-shot, where 0.1 selected one example per class.
+Constructor parameters are keyword-only. `k_shot=None` selects one example per class, as in 0.1, and `k_shot=0` is
+zero-shot.
 The API key is read from `OPENAI_API_KEY`, or from the variable named by `OpenAIBackend(api_key_env=...)`, and `.env`
 files are no longer loaded automatically.
 

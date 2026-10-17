@@ -1,0 +1,58 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You translate texts. Answer with the translation only.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Translate the following text into Greek.\n\nTranslate these terms as given:\n- SkaiBox \u2192 SkaiBox Follow the examples.\n\nExamples:\n\nText: Open SkaiBox to start.\nTranslation: \u0391\u03bd\u03bf\u03af\u03be\u03c4\u03b5 \u03c4\u03bf SkaiBox \u03b3\u03b9\u03b1 \u03bd\u03b1 \u03be\u03b5\u03ba\u03b9\u03bd\u03ae\u03c3\u03b5\u03c4\u03b5.\n\nText: SkaiBox saves your work.\nTranslation: \u03a4\u03bf SkaiBox \u03b1\u03c0\u03bf\u03b8\u03b7\u03ba\u03b5\u03cd\u03b5\u03b9 \u03c4\u03b7 \u03b4\u03bf\u03c5\u03bb\u03b5\u03b9\u03ac \u03c3\u03b1\u03c2.\n\nText: Thank you.\nTranslation: \u0395\u03c5\u03c7\u03b1\u03c1\u03b9\u03c3\u03c4\u03ce.\n\nSkaiBox is closing now.",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "\u03a4\u03bf SkaiBox \u03ba\u03bb\u03b5\u03af\u03bd\u03b5\u03b9 \u03c4\u03ce\u03c1\u03b1.",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792265774,
+    "id": "chatcmpl-Ea4UQrCEHda828absqBD8VuENMEmt",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 146,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 128,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 118,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 264
+    }
+  },
+  "status": 200
+}

@@ -6,6 +6,7 @@ from PIL import Image
 from sklearn.pipeline import make_pipeline
 from sklearn.utils._param_validation import InvalidParameterError
 
+from skai.backends import DummyBackend
 from skai.core import Audio, Video
 from skai.generation import SpeechSynthesizer, TalkingAvatarGenerator
 
@@ -37,3 +38,16 @@ def test_synthesized_speech_is_animated_in_pipeline():
     videos = pipeline.fit(None).predict(['Hello there', 'Goodbye'])
     assert len(videos) == 2
     assert all(isinstance(video, Video) for video in videos)
+
+
+def test_fit_prepares_portrait():
+    """Crop the portrait to a centered square and resize it to the backend's input size."""
+
+    class SizedBackend(DummyBackend):
+        """Take portraits of 512 pixels."""
+
+        avatar_size = 512
+
+    generator = TalkingAvatarGenerator(avatar=Image.new('RGBA', (640, 480)), backend=SizedBackend()).fit()
+    assert (generator.avatar_.size, generator.avatar_.mode) == ((512, 512), 'RGB')
+    assert TalkingAvatarGenerator(avatar=Image.new('RGB', (64, 48)), backend='dummy').fit().avatar_.size == (48, 48)

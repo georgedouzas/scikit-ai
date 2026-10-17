@@ -45,7 +45,8 @@ class TalkingAvatarGenerator(BaseMediaGenerator):
             The resolved backend.
 
         avatar_ (PIL.Image.Image):
-            The portrait read from `avatar`.
+            The portrait read from `avatar`, converted to RGB, cropped to a centered square and resized to the input
+            size of the backend.
 
     Examples:
         >>> import numpy as np
@@ -86,8 +87,13 @@ class TalkingAvatarGenerator(BaseMediaGenerator):
         self.random_state = random_state
 
     def _prepare(self) -> None:
-        """Read the portrait."""
-        self.avatar_ = read_image(self.avatar)
+        """Read the portrait, crop it to a centered square and resize it to the input size of the backend."""
+        portrait = read_image(self.avatar).convert('RGB')
+        side = min(portrait.size)
+        left, top = (portrait.width - side) // 2, (portrait.height - side) // 2
+        portrait = portrait.crop((left, top, left + side, top + side))
+        size = self.backend_.avatar_size
+        self.avatar_ = portrait if size is None else portrait.resize((size, size))
 
     def _build_request(self, sample: Audio, seed: int) -> Any:
         """Build the avatar request of one audio sample."""

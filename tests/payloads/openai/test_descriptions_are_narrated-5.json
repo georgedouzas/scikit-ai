@@ -2,13 +2,13 @@
   "method": "POST",
   "path": "/v1/audio/speech",
   "request": {
-    "input": "A small vintage blue hatchback is parked on the street in front of a beige building with barred and shuttered windows.",
+    "input": "A single glossy red apple with a short stem sits on a clean white surface against a pale background.",
     "model": "gpt-4o-mini-tts",
     "response_format": "wav",
     "voice": "alloy"
   },
   "response": {
-    "bytes": 343244,
+    "bytes": 331244,
     "content_type": "audio/wav"
   },
   "status": 200

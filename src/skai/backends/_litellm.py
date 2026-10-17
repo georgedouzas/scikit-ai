@@ -46,6 +46,8 @@ class LiteLLMBackend(PromptedBackend):
         'embed_text': 'openai/text-embedding-3-small',
     }
 
+    shortens_embeddings: ClassVar[bool] = True
+
     def __init__(
         self,
         model: str | None = None,

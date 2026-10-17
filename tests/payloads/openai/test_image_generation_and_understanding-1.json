@@ -9,11 +9,11 @@
   },
   "response": {
     "background": "opaque",
-    "created": 1792257050,
+    "created": 1792265760,
     "data": [
       {
-        "b64_json": "<1961964 characters>",
-        "generation_id": "e90d7d7f-70b6-45f0-865b-65d2061cb926"
+        "b64_json": "<1830040 characters>",
+        "generation_id": "bf648ea6-7b23-4347-b568-202bc05d62fa"
       }
     ],
     "output_format": "png",

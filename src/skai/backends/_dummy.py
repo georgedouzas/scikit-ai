@@ -19,6 +19,7 @@ from skai.core import (
     DescriptionRequest,
     EmbeddingRequest,
     ExtractionRequest,
+    FineTuneRequest,
     ImageEditRequest,
     ImageGenerationRequest,
     Segment,
@@ -113,6 +114,8 @@ class DummyBackend(Backend):
     accepts_audio: ClassVar[bool] = True
     sends_video_audio: ClassVar[bool] = True
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
+    accepts_context: ClassVar[bool] = True
+    shortens_embeddings: ClassVar[bool] = True
 
     def classify_text(self, request: ClassificationRequest) -> dict[str, float]:
         """Return deterministic scores derived from the text.
@@ -230,6 +233,7 @@ class DummyBackend(Backend):
         """
         duration = request.audio.duration
         text = f'Speech of {duration:.2f} seconds.'
+        text = f'{text} Terms: {", ".join(request.vocabulary)}.' if request.vocabulary else text
         if request.timestamps == 'segment':
             return Transcript(text, (Segment(0.0, duration, text),))
         if request.timestamps == 'word':
@@ -386,3 +390,16 @@ class DummyBackend(Backend):
             A video of the requested duration, at `fps` or 8 frames per second.
         """
         return _still_video(request.image, request.duration, request.fps or VIDEO_FPS)
+
+    def fine_tune(self, request: FineTuneRequest) -> str:
+        """Return a model id derived from the training prompts and answers, without training anything.
+
+        Args:
+            request:
+                The fine-tuning request.
+
+        Returns:
+            A deterministic model id.
+        """
+        parts = [part for prompt, answer in request.examples for part in (prompt.user, answer)]
+        return f'dummy-finetuned-{_seed_of(request.task, *parts)}'

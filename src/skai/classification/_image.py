@@ -27,6 +27,10 @@ class ImageClassifier(BaseClassifier):
             How many training images are passed to the backend as examples. `None` or `0` passes none, an integer
             selects that many at random, and an array of indices selects those images.
 
+        adaptation:
+            `'examples'` passes examples to the backend at prediction. `'finetune'` trains a model on all the training
+            data in `fit`, on backends that support fine-tuning, and sends later requests to it.
+
         backend:
             The backend, as `'<provider>'`, `'<provider>:<model>'` or a backend object. The local Hugging Face backend
             is used when it is `None`.
@@ -53,6 +57,9 @@ class ImageClassifier(BaseClassifier):
         examples_ (tuple):
             The labeled examples passed to the backend.
 
+        model_ (str):
+            The id of the fine-tuned model. It is set only with `adaptation='finetune'`.
+
     Examples:
         >>> from PIL import Image
         >>> from skai.classification import ImageClassifier
@@ -70,6 +77,7 @@ class ImageClassifier(BaseClassifier):
         labels: list | dict | None = None,
         instructions: str | None = None,
         k_shot: int | ArrayLike | None = None,
+        adaptation: Literal['examples', 'finetune'] = 'examples',
         backend: str | Backend | None = None,
         batch_size: int = 8,
         on_error: Literal['raise', 'ignore'] = 'raise',
@@ -78,6 +86,7 @@ class ImageClassifier(BaseClassifier):
         self.labels = labels
         self.instructions = instructions
         self.k_shot = k_shot
+        self.adaptation = adaptation
         self.backend = backend
         self.batch_size = batch_size
         self.on_error = on_error

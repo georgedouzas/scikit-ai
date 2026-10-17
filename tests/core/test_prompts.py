@@ -10,38 +10,10 @@ from skai.core import (
     DescriptionRequest,
     ExtractionRequest,
     InvalidResponseError,
-    PromptedBackend,
     Video,
     sample_frames,
 )
-
-
-class ScriptedBackend(PromptedBackend):
-    """Answer every prompt with a fixed answer and keep the prompts."""
-
-    default_models = dict.fromkeys(
-        ['classify_audio', 'classify_video', 'describe_audio', 'describe_video', 'extract_fields'],
-        'scripted',
-    )
-    accepts_audio = True
-    sends_video_audio = True
-
-    def __init__(self, model=None, *, answer='', options=None, max_concurrency=1):
-        """Store the fixed answer."""
-        super().__init__(model, options=options, max_concurrency=max_concurrency)
-        self.answer = answer
-
-    def complete(self, prompt, model):
-        """Keep the prompt and return the fixed answer."""
-        self.prompts = [*getattr(self, 'prompts', []), prompt]
-        return self.answer
-
-
-class SilentBackend(ScriptedBackend):
-    """Accept neither audio prompts nor the audio of videos."""
-
-    accepts_audio = False
-    sends_video_audio = False
+from tests.fakes import ScriptedBackend, SilentBackend
 
 
 @pytest.fixture

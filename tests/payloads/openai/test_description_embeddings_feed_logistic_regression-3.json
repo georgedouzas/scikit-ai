@@ -4,7 +4,7 @@
   "request": {
     "encoding_format": "base64",
     "input": [
-      "A single shiny red apple with a short stem sits on a pale surface against a neutral beige background."
+      "A single glossy red apple with a short stem sits on a smooth white surface against a pale background."
     ],
     "model": "text-embedding-3-small"
   },

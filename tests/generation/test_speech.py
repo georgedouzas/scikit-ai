@@ -1,7 +1,11 @@
 """Test the speech synthesizer."""
 
-from skai.core import Audio
+import pytest
+
+from skai.backends import OpenAIBackend
+from skai.core import Audio, UnsupportedBackendError
 from skai.generation import SpeechSynthesizer
+from tests.fakes import namespace
 
 
 def test_predict_returns_one_audio_per_text():
@@ -18,3 +22,23 @@ def test_fit_reads_reference_voice(tmp_path, audio):
         synthesizer = SpeechSynthesizer(voice=voice, backend='dummy').fit()
         assert isinstance(synthesizer.voice_, Audio)
     assert SpeechSynthesizer(voice='nova', backend='dummy').fit().voice_ == 'nova'
+
+
+def test_fit_joins_voice_recordings(audio):
+    """Join several recordings into one reference voice at the first recording's rate."""
+    other = Audio(audio.samples[::2], 8000)
+    synthesizer = SpeechSynthesizer(voice=[audio, other], backend='dummy').fit()
+    assert synthesizer.voice_.sample_rate == 16000
+    assert synthesizer.voice_.duration == pytest.approx(2.3, abs=0.01)
+
+
+def test_fit_rejects_empty_voice_list():
+    """Reject an empty list of recordings."""
+    with pytest.raises(ValueError, match='at least one recording'):
+        SpeechSynthesizer(voice=[], backend='dummy').fit()
+
+
+def test_fit_rejects_recordings_without_cloning(audio):
+    """Reject recordings on a backend that cannot clone voices."""
+    with pytest.raises(UnsupportedBackendError, match='cannot clone voices'):
+        SpeechSynthesizer(voice=[audio], backend=OpenAIBackend(client=namespace())).fit()

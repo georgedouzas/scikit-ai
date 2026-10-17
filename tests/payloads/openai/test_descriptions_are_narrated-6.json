@@ -2,13 +2,13 @@
   "method": "POST",
   "path": "/v1/audio/speech",
   "request": {
-    "input": "A single shiny red apple with a short stem sits centered on a pale tabletop against a soft beige background.",
+    "input": "A small blue hatchback is parked diagonally across a quiet residential street lined with red-brick houses and bare trees.",
     "model": "gpt-4o-mini-tts",
     "response_format": "wav",
     "voice": "alloy"
   },
   "response": {
-    "bytes": 352844,
+    "bytes": 357644,
     "content_type": "audio/wav"
   },
   "status": 200

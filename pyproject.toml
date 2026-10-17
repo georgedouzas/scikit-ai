@@ -76,7 +76,7 @@ docs = "nox --error-on-external-run -R -s docs -- {args:serve}"
 formatting = "nox --error-on-external-run -R -s formatting -- {args:all}"
 checks = "nox --default-venv-backend uv --error-on-external-run -R -s checks -- {args:all}"
 tests = "nox --default-venv-backend uv --error-on-external-run -R -s tests"
-e2e = "nox --default-venv-backend uv --error-on-external-run -R -s e2e"
+e2e = "nox --default-venv-backend uv --error-on-external-run -R -s e2e -- {args}"
 changelog = "nox --error-on-external-run -R -s changelog"
 release = "nox --error-on-external-run -R -s release"
 
@@ -165,6 +165,8 @@ select = ["C", "E", "F", "W", "B", "I", "D", "N", "UP", "YTT", "ANN", "S",
 "tests/conftest.py" = ["ANN401"]
 "tests/fakes.py" = ["ANN401"]
 "e2e/conftest.py" = ["ANN401"]
+# Reference translations are written in Greek on purpose.
+"e2e/test_openai_fit.py" = ["RUF001"]
 # Components narrow the sample types of the base hooks, and backends and media codecs handle objects of untyped
 # optional libraries.
 "src/skai/core/_estimator.py" = ["ANN401"]

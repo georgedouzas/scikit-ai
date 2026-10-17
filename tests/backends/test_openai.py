@@ -1,6 +1,7 @@
 """Test the OpenAI backend against a fake client."""
 
 import base64
+import json
 
 import numpy as np
 import pytest
@@ -8,7 +9,14 @@ from PIL import Image
 
 from skai.backends import OpenAIBackend
 from skai.classification import ImageClassifier, TextClassifier
-from skai.core import Audio, InvalidResponseError, SampleError, UnsupportedBackendError
+from skai.core import (
+    Audio,
+    ExtractionRequest,
+    FineTuneError,
+    InvalidResponseError,
+    SampleError,
+    UnsupportedBackendError,
+)
 from skai.description import ImageDescriptor
 from skai.embedding import TextEmbedder
 from skai.generation import ImageGenerator, SpeechSynthesizer
@@ -218,3 +226,102 @@ def test_transcriber_reads_text_and_timestamps(audio, timestamps, expected):
     assert call['language'] == 'en'
     assert call['file'][0] == 'audio.wav'
     assert call.get('timestamp_granularities') == ([timestamps] if timestamps else None)
+
+
+def test_transcriber_sends_vocabulary_as_prompt(audio):
+    """Send the learned vocabulary as the transcription prompt."""
+    client = make_client()
+    transcriber = SpeechTranscriber(backend=OpenAIBackend(client=client)).fit([audio], ['We run Kubernetes over gRPC.'])
+    transcriber.predict([audio])
+    assert client.audio.transcriptions.create.calls[-1]['prompt'] == 'Kubernetes, gRPC'
+
+
+def fine_tuning_client(statuses, model='ft:gpt-4.1-mini:skai'):
+    """Return a fake client whose fine-tuning job goes through the given statuses."""
+    client = make_client('positive')
+    job = {'id': 'ftjob-1', 'fine_tuned_model': model, 'error': 'bad data'}
+    jobs = iter([namespace(status=status, **job) for status in statuses])
+    client.files = namespace(create=Recorder(lambda **kwargs: namespace(id='file-1')))
+    client.fine_tuning = namespace(
+        jobs=namespace(
+            create=Recorder(lambda **kwargs: next(jobs)),
+            retrieve=Recorder(lambda job_id: next(jobs)),
+        ),
+    )
+    return client
+
+
+def test_fine_tuning_uploads_examples_and_waits():
+    """Upload the chat examples, poll the job, and send later requests to the new model."""
+    client = fine_tuning_client(['queued', 'running', 'succeeded'])
+    backend = OpenAIBackend(client=client, poll_interval=0)
+    texts = [f'text {index}' for index in range(10)]
+    classifier = TextClassifier(adaptation='finetune', backend=backend).fit(texts, ['positive', 'negative'] * 5)
+    assert classifier.model_ == 'ft:gpt-4.1-mini:skai'
+    name, content = client.files.create.calls[-1]['file']
+    lines = [json.loads(line) for line in content.decode().splitlines()]
+    assert name == 'train.jsonl'
+    assert len(lines) == 10
+    assert lines[0]['messages'][-1] == {'role': 'assistant', 'content': 'positive'}
+    assert client.fine_tuning.jobs.create.calls[-1]['model'] == 'gpt-4.1-mini-2025-04-14'
+    assert len(client.fine_tuning.jobs.retrieve.calls) == 2
+    classifier.predict(['new text'])
+    assert client.chat.completions.create.calls[-1]['model'] == 'ft:gpt-4.1-mini:skai'
+
+
+def test_fine_tuning_reports_failed_jobs():
+    """Raise `FineTuneError` with the job id and its error."""
+    backend = OpenAIBackend(client=fine_tuning_client(['running', 'failed']), poll_interval=0)
+    with pytest.raises(FineTuneError, match='ftjob-1 ended with status `failed` \\(bad data\\)'):
+        TextSummarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
+
+
+def test_fine_tuning_times_out_with_job_id():
+    """Raise `TimeoutError` naming the job when it takes too long."""
+    backend = OpenAIBackend(client=fine_tuning_client(['running'] * 3), finetune_timeout=0, poll_interval=0)
+    with pytest.raises(TimeoutError, match='ftjob-1 did not finish'):
+        TextSummarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
+
+
+def test_json_prompts_use_json_mode():
+    """Ask for a JSON object when the prompt needs JSON output."""
+    client = make_client('{"name": "Ada"}')
+    backend = OpenAIBackend(model='gpt-5-mini', client=client)
+    fields = backend.extract_fields(ExtractionRequest('Ada.', (('name', 'person name'),)))
+    assert fields == {'name': 'Ada'}
+    assert client.chat.completions.create.calls[-1]['response_format'] == {'type': 'json_object'}
+
+
+class RefusedError(Exception):
+    """Stand in for the error that OpenAI raises when an account cannot fine-tune."""
+
+    status_code = 403
+    message = 'OpenAI is winding down the fine-tuning platform.'
+
+
+def test_fine_tuning_reports_refused_jobs():
+    """Raise `FineTuneError` with OpenAI's reason when it refuses the job."""
+
+    def refuse(**kwargs):
+        """Refuse every job."""
+        raise RefusedError
+
+    client = fine_tuning_client([])
+    client.fine_tuning.jobs.create = refuse
+    backend = OpenAIBackend(client=client, poll_interval=0)
+    with pytest.raises(FineTuneError, match='OpenAI refused the fine-tuning job: OpenAI is winding down'):
+        TextSummarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
+
+
+def test_fine_tuning_keeps_other_errors():
+    """Let errors that are not refusals propagate unchanged."""
+
+    def fail(**kwargs):
+        """Fail like a network error."""
+        msg = 'connection reset'
+        raise ConnectionError(msg)
+
+    client = fine_tuning_client([])
+    client.files.create = fail
+    with pytest.raises(ConnectionError, match='connection reset'):
+        TextSummarizer(adaptation='finetune', backend=OpenAIBackend(client=client)).fit(['t'] * 10, ['s'] * 10)

@@ -28,9 +28,17 @@ class InvalidResponseError(ValueError):
     """Signal that a backend returned a response that does not fit the task."""
 
 
+class FineTuneError(RuntimeError):
+    """Signal that a fine-tuning job failed or was cancelled."""
+
+
 class SampleError(RuntimeError):
     """Signal that processing one sample failed."""
 
 
 class SampleFailureWarning(UserWarning):
     """Warn that some samples failed and were replaced by missing values."""
+
+
+class UnusedFitDataWarning(UserWarning):
+    """Warn that the backend cannot use something the component learned in `fit`."""

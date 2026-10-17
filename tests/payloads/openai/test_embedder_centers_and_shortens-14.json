@@ -1,0 +1,28 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "dimensions": 8,
+    "encoding_format": "base64",
+    "input": [
+      "TL;DR: Young bakery wins national bread contest."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "ACDSPgBAwr4A4Hm+AMAvPgCgoj4AgN29AACjvQBgMT8=",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 11,
+      "total_tokens": 11
+    }
+  },
+  "status": 200
+}

@@ -26,6 +26,7 @@ nav:
     - guide/index.md
     - Media inputs and outputs: guide/media.md
     - Backends: guide/backends.md
+    - What fit learns: guide/fit.md
     - Classification: guide/classification.md
     - Description: guide/description.md
     - Transcription: guide/transcription.md

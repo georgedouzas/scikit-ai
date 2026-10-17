@@ -1,0 +1,28 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "dimensions": 8,
+    "encoding_format": "base64",
+    "input": [
+      "Heavy rain closed the main road for six hours, and the council promised new drains."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "AMBEvQCA3j4AYNM+AIA7PgCgLb8AwLI+AOCWPQCgCT4=",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 17,
+      "total_tokens": 17
+    }
+  },
+  "status": 200
+}

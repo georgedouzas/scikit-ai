@@ -43,4 +43,20 @@ Cloned voices and talking avatars can imitate real people. Generate them only wi
 depict, label them as generated where they are shared, and follow the usage policies of the provider that runs the
 model.
 
+## What fit learns
+
+Generators prepare their conditioning in `fit`. `SpeechSynthesizer` joins one or more recordings in `voice` into the
+voice it clones. `ImageGenerator` learns `style_` from `style_images`, using the backend's image description, and an
+explicit `style` takes precedence. `TalkingAvatarGenerator` crops the portrait to a centered square and resizes it to
+the backend's input size.
+
+```python exec="true" source="above" result="text"
+from PIL import Image
+from skai.generation import ImageGenerator
+
+references = [Image.new('RGB', (16, 16), color) for color in ('teal', 'navy')]
+generator = ImageGenerator(size=(64, 64), style_images=references, backend='dummy').fit()
+print(generator.style_)
+```
+
 The API reference is in [`skai.generation`](../api/generation/index.md).

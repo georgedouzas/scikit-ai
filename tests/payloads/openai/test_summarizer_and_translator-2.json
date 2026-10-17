@@ -1,0 +1,58 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You translate texts. Answer with the translation only.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Translate the following text into Greek.\n\nGood morning",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "\u039a\u03b1\u03bb\u03b7\u03bc\u03ad\u03c1\u03b1",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792232903,
+    "id": "chatcmpl-EZvwFpBbGBud0Ja0DBEFs7NWo5Xe5",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 141,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 128,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 29,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 170
+    }
+  },
+  "status": 200
+}

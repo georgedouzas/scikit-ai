@@ -1,0 +1,58 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You are a classifier. Answer with exactly one label from the list of labels and nothing else.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Labels:\n- negative\n- positive\n\nExample 1:\nInput: Awful quality.\nOutput: negative\n\nExample 2:\nInput: Great value.\nOutput: positive\n\nInput: Absolutely wonderful, I love it!\nOutput:",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "positive",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792232909,
+    "id": "chatcmpl-EZvwLCtLDJm8mYRlmfStpCLcrEsZG",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 10,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 75,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 85
+    }
+  },
+  "status": 200
+}

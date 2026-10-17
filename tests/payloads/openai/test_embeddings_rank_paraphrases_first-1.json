@@ -1,0 +1,27 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "encoding_format": "base64",
+    "input": [
+      "dimension probe"
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "<8192 characters>",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 2,
+      "total_tokens": 2
+    }
+  },
+  "status": 200
+}

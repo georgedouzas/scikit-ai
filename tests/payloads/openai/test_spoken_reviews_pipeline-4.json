@@ -1,0 +1,13 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/transcriptions",
+  "request": null,
+  "response": {
+    "text": "I am thrilled with this purchase.",
+    "usage": {
+      "seconds": 3,
+      "type": "duration"
+    }
+  },
+  "status": 200
+}

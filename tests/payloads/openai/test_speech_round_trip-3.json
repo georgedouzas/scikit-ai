@@ -1,0 +1,63 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/transcriptions",
+  "request": null,
+  "response": {
+    "duration": 3.3499999046325684,
+    "language": "english",
+    "task": "transcribe",
+    "text": "The quick brown fox jumps over the lazy dog.",
+    "usage": {
+      "seconds": 4,
+      "type": "duration"
+    },
+    "words": [
+      {
+        "end": 0.2800000011920929,
+        "start": 0.0,
+        "word": "The"
+      },
+      {
+        "end": 0.6399999856948853,
+        "start": 0.2800000011920929,
+        "word": "quick"
+      },
+      {
+        "end": 0.9800000190734863,
+        "start": 0.6399999856948853,
+        "word": "brown"
+      },
+      {
+        "end": 1.5199999809265137,
+        "start": 0.9800000190734863,
+        "word": "fox"
+      },
+      {
+        "end": 2.0399999618530273,
+        "start": 1.5199999809265137,
+        "word": "jumps"
+      },
+      {
+        "end": 2.319999933242798,
+        "start": 2.0399999618530273,
+        "word": "over"
+      },
+      {
+        "end": 2.5,
+        "start": 2.319999933242798,
+        "word": "the"
+      },
+      {
+        "end": 2.740000009536743,
+        "start": 2.5,
+        "word": "lazy"
+      },
+      {
+        "end": 3.0799999237060547,
+        "start": 2.740000009536743,
+        "word": "dog"
+      }
+    ]
+  },
+  "status": 200
+}

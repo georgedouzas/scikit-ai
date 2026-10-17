@@ -1,9 +1,10 @@
 site_name: "scikit-ai"
-site_description: "A unified AI library that brings together classical Machine Learning, Reinforcement Learning, and Large Language Models under a consistent and simple interface."
+site_description: "Task-oriented components for text, images, audio and video with a scikit-learn API, powered by open-source models or cloud APIs."
 site_url: "https://georgedouzas.github.io/scikit-ai"
 repo_url: "https://github.com/georgedouzas/scikit-ai"
 repo_name: "georgedouzas/scikit-ai"
 site_dir: "site"
+strict: true
 watch: [README.md, CONTRIBUTING.md, CHANGELOG.md, src/skai]
 
 theme:
@@ -19,9 +20,16 @@ theme:
 nav:
   - Overview:
     - index.md
-    - User guide: overview/user_guide.md
     - Changelog: overview/changelog.md
     - License: overview/license.md
+  - User guide:
+    - guide/index.md
+    - Media inputs and outputs: guide/media.md
+    - Backends: guide/backends.md
+    - Text: guide/text.md
+    - Images: guide/image.md
+    - Audio: guide/audio.md
+    - Migrating from 0.1: guide/migration.md
   - API: api/
   - Examples: generated/gallery
   - Development:

@@ -1,0 +1,122 @@
+"""Run prompted component tasks on the providers that LiteLLM routes to."""
+
+# Author: Georgios Douzas <gdouzas@icloud.com>
+# License: MIT
+
+from typing import Any, ClassVar
+
+import numpy as np
+from numpy.typing import NDArray
+
+from skai.core import EmbeddingRequest, Prompt, PromptedBackend, import_optional, read_env, to_data_url
+
+CHAT_MODEL = 'anthropic/claude-haiku-5-5'
+
+
+class LiteLLMBackend(PromptedBackend):
+    """Run prompted tasks and embeddings on any provider that LiteLLM supports.
+
+    Models are named as LiteLLM names them, for example `anthropic/claude-haiku-5-5`, `gemini/gemini-2.5-flash` or
+    `ollama/llama3.2`. LiteLLM reads the standard credential variable of each provider. The backend needs the `litellm`
+    extra.
+
+    Args:
+        model:
+            The model to use. The default model of the task is used when it is `None`.
+
+        api_key_env:
+            The name of an environment variable that holds the API key, used instead of the provider's standard one.
+
+        api_base:
+            The base URL of the provider's API.
+
+        options:
+            Extra keyword arguments passed to every LiteLLM call.
+
+        max_concurrency:
+            The maximum number of requests that run at the same time.
+    """
+
+    default_models: ClassVar[dict[str, str]] = {
+        'classify_text': CHAT_MODEL,
+        'summarize': CHAT_MODEL,
+        'translate': CHAT_MODEL,
+        'describe_image': CHAT_MODEL,
+        'classify_image': CHAT_MODEL,
+        'embed_text': 'openai/text-embedding-3-small',
+    }
+
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        api_key_env: str | None = None,
+        api_base: str | None = None,
+        options: dict | None = None,
+        max_concurrency: int = 8,
+    ) -> None:
+        super().__init__(model, options=options, max_concurrency=max_concurrency)
+        self.api_key_env = api_key_env
+        self.api_base = api_base
+
+    @property
+    def _litellm(self) -> Any:
+        """The LiteLLM module, imported on first use."""
+        if not hasattr(self, '_module'):
+            self.connect()
+        return self._module
+
+    def _credentials(self) -> dict[str, str]:
+        """Return the API key and base URL arguments of a LiteLLM call."""
+        credentials = {'api_key': read_env(self.api_key_env)} if self.api_key_env else {}
+        return credentials | ({'api_base': self.api_base} if self.api_base else {})
+
+    def connect(self) -> 'LiteLLMBackend':
+        """Import LiteLLM and check that the credential variable is set.
+
+        Returns:
+            The backend.
+        """
+        self._module = import_optional('litellm', 'litellm')
+        self._credentials()
+        return self
+
+    def complete(self, prompt: Prompt, model: str) -> str:
+        """Return the answer of a chat model to a prompt.
+
+        Args:
+            prompt:
+                The prompt.
+
+            model:
+                The model to prompt.
+
+        Returns:
+            The answer of the model.
+        """
+        content: list[dict[str, Any]] = [{'type': 'text', 'text': prompt.user}]
+        content += [{'type': 'image_url', 'image_url': {'url': to_data_url(image)}} for image in prompt.images]
+        messages = [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
+        response = self._litellm.completion(model=model, messages=messages, **self._credentials(), **self.call_options)
+        return response.choices[0].message.content or ''
+
+    def embed_text(self, request: EmbeddingRequest) -> NDArray[np.floating]:
+        """Embed a text with an embedding model.
+
+        Args:
+            request:
+                The embedding request.
+
+        Returns:
+            The embedding vector.
+        """
+        dimensions = {'dimensions': request.dimensions} if request.dimensions else {}
+        response = self._litellm.embedding(
+            model=self.resolve_model('embed_text'),
+            input=[request.text],
+            **dimensions,
+            **self._credentials(),
+            **self.call_options,
+        )
+        item = response.data[0]
+        return np.asarray(item['embedding'] if isinstance(item, dict) else item.embedding)

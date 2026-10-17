@@ -77,7 +77,7 @@ Every component SHALL return exactly one output per input sample, in input order
 - **THEN** output `i` corresponds to input `i` for all `i`
 
 ### Requirement: Per-sample failure handling
-Every component SHALL accept `on_error` with values `"raise"` (default) and `"ignore"`. With `"ignore"`, a sample whose backend call fails yields `None` (or a row of NaN for numeric outputs) and a warning is emitted.
+Every component SHALL accept `on_error` with values `"raise"` (default) and `"ignore"`. With `"ignore"`, a sample whose backend call fails yields `None` (or a row of NaN for numeric outputs), and every such failure is reported in one warning naming each failed index and its error.
 
 #### Scenario: Ignored failure
 - **WHEN** one of three inputs fails at the backend and `on_error="ignore"`

@@ -81,3 +81,18 @@ The library SHALL ship a `"dummy"` provider that supports every task, needs no n
 #### Scenario: Dummy backend in a pipeline
 - **WHEN** any component is fitted and used with `backend="dummy"` without network access
 - **THEN** it returns outputs of the documented type and shape, identical across runs
+
+### Requirement: Fine-tuning task
+Backends that support fine-tuning SHALL implement a `fine_tune` task that takes the task name and the training examples, trains a model, waits for it within `finetune_timeout` seconds, and returns the model id. They SHALL declare their minimum number of examples.
+
+#### Scenario: Timeout
+- **WHEN** a fine-tuning job does not finish within `finetune_timeout`
+- **THEN** `fit` raises `TimeoutError` naming the job id, so the user can resume it later with `model=<id>`
+
+#### Scenario: Provider refuses the job
+- **WHEN** a backend that supports fine-tuning has the job refused by its provider, for example because the account cannot fine-tune
+- **THEN** `fit` raises `FineTuneError` with the provider's reason, instead of the provider's own exception
+
+#### Scenario: Dummy fine-tuning
+- **WHEN** the `dummy` backend fine-tunes on any examples
+- **THEN** it returns a deterministic model id without waiting

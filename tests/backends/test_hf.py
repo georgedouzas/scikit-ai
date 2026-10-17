@@ -5,10 +5,10 @@ import pytest
 from PIL import Image
 
 from skai.backends import HFBackend
-from skai.classification import ImageClassifier, TextClassifier
+from skai.classification import AudioClassifier, ImageClassifier, TextClassifier
 from skai.description import ImageDescriptor
-from skai.embedding import TextEmbedder
-from skai.generation import ImageGenerator, SpeechSynthesizer
+from skai.embedding import AudioEmbedder, ImageEmbedder, TextEmbedder
+from skai.generation import ImageAnimator, ImageEditor, ImageGenerator, SpeechSynthesizer, VideoGenerator
 from skai.text import TextSummarizer, TextTranslator
 from skai.transcription import SpeechTranscriber
 from tests.fakes import Recorder, install_module, namespace
@@ -150,3 +150,67 @@ def test_transcriber_sends_vocabulary_as_prompt_ids(transformers, audio):
     SpeechTranscriber(backend='hf').fit([audio], ['We run Kubernetes.']).predict([audio])
     call = transformers.pipelines['automatic-speech-recognition'].calls[-1]
     assert call['generate_kwargs']['prompt_ids'] == ('prompt', 'Kubernetes')
+
+
+def test_audio_classification_uses_clap(transformers, monkeypatch, audio):
+    """Score audio resampled to 48 kHz with the zero-shot audio pipeline."""
+    monkeypatch.setitem(
+        PIPELINES,
+        'zero-shot-audio-classification',
+        lambda samples, candidate_labels: [
+            {'label': label, 'score': score} for label, score in zip(candidate_labels, [0.3, 0.7], strict=True)
+        ],
+    )
+    classifier = AudioClassifier(labels=['rain', 'wind'], backend='hf').fit()
+    np.testing.assert_allclose(classifier.predict_proba([audio]), [[0.3, 0.7]])
+    samples = transformers.pipelines['zero-shot-audio-classification'].calls[-1]['args'][0]
+    assert samples.shape == (48000,)
+
+
+def test_image_and_audio_embeddings(transformers, monkeypatch, audio):
+    """Embed images with CLIP through sentence-transformers and audio with CLAP."""
+    install_module(
+        monkeypatch,
+        'sentence_transformers',
+        SentenceTransformer=lambda model, device: namespace(encode=lambda items, **kwargs: np.ones((len(items), 6))),
+    )
+    assert ImageEmbedder(backend='hf').fit().transform([Image.new('RGB', (4, 4))]).shape == (1, 6)
+    features = namespace(detach=lambda: namespace(cpu=lambda: namespace(numpy=lambda: np.ones(5))))
+    transformers.ClapProcessor = namespace(from_pretrained=lambda model: lambda **kwargs: {'input_features': 1})
+    transformers.ClapModel = namespace(
+        from_pretrained=lambda model: namespace(get_audio_features=lambda **kwargs: [features]),
+    )
+    assert AudioEmbedder(backend='hf').fit().transform([audio]).shape == (1, 5)
+
+
+def test_video_generation_edit_and_animation(transformers, monkeypatch):
+    """Generate, edit and animate with diffusion pipelines, returning frames of the requested sizes."""
+
+    class FakeDiffusion:
+        """Return frames or images shaped by the call."""
+
+        def to(self, device):
+            """Return the pipeline on a device."""
+            return self
+
+        def __call__(self, *args, **kwargs):
+            """Return float frames for video calls and an image for edit calls."""
+            if 'num_frames' in kwargs:
+                height, width = kwargs.get('height', 576), kwargs.get('width', 1024)
+                return namespace(frames=[[np.full((height, width, 3), 0.5)] * kwargs['num_frames']])
+            return namespace(images=[Image.new('RGB', (64, 64))])
+
+    install_module(
+        monkeypatch,
+        'diffusers',
+        DiffusionPipeline=namespace(from_pretrained=lambda model: FakeDiffusion()),
+        StableDiffusionInstructPix2PixPipeline=namespace(from_pretrained=lambda model: FakeDiffusion()),
+        StableVideoDiffusionPipeline=namespace(from_pretrained=lambda model: FakeDiffusion()),
+    )
+    install_module(monkeypatch, 'torch', Generator=lambda: namespace(manual_seed=lambda seed: seed))
+    video = VideoGenerator(duration=1, size=(32, 16), backend='hf').fit().predict(['a boat'])[0]
+    assert video.frames.shape == (17, 16, 32, 3)
+    assert video.frames.dtype == np.uint8
+    assert ImageEditor(instruction='snow', backend='hf').fit().predict([Image.new('RGB', (8, 6))])[0].size == (8, 6)
+    animation = ImageAnimator(duration=1, backend='hf').fit().predict([Image.new('RGB', (12, 8))])[0]
+    assert animation.frames.shape[1:3] == (8, 12)

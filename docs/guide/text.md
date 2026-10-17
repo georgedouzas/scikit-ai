@@ -12,6 +12,20 @@ print(TextSummarizer(max_length=6, style='one line', backend='dummy').fit().pred
 print(TextTranslator(target_language='Greek', backend='dummy').fit().predict(['Good morning']))
 ```
 
+## Extract fields
+
+`TextExtractor` extracts the named `fields` of every text. `predict` returns one dict per text with exactly the field
+names, and `None` for a field the text does not contain. `transform` returns the same values as columns named after
+the fields, so they can feed a `ColumnTransformer` or a DataFrame.
+
+```python exec="true" source="above" result="text"
+from skai.text import TextExtractor
+
+extractor = TextExtractor(fields={'name': 'person name', 'city': 'city of residence'}, backend='dummy')
+print(extractor.fit().predict(['The name is Ada.']))
+print(extractor.set_output(transform='pandas').fit_transform(['The name is Ada.', 'The city is Athens.']))
+```
+
 ## What fit learns
 
 `fit(X, y)` with reference outputs as `y` passes text and reference pairs to the backend. `TextSummarizer` also

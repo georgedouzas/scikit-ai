@@ -12,6 +12,7 @@ from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from PIL import Image
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin, clone
 from sklearn.utils import Tags, check_random_state
 from sklearn.utils._param_validation import Interval, StrOptions
@@ -21,12 +22,15 @@ from sklearn.utils.validation import check_is_fitted
 from ._backend import Backend
 from ._errors import MediaReadError, SampleError, SampleFailureWarning, UnsupportedBackendError
 from ._io import MediaKind, check_text, read_audio, read_image, read_video, to_object_array, to_samples, write_outputs
+from ._media import Audio
 from ._prompts import NO_LABEL, FineTuneRequest, build_task_prompt
 from ._registry import list_backends, resolve_backend
 from ._requests import ClassificationRequest, EmbeddingRequest
 
 MAX_SEED = 2**31 - 1
 PROBE_TEXT = 'dimension probe'
+PROBE_SIZE = 32
+PROBE_SAMPLE_RATE = 16000
 MULTILABEL_THRESHOLD = 0.5
 DEFAULT_MAX_EXAMPLES = 8
 READERS: dict[str, Callable[[Any, int], Any]] = {
@@ -129,8 +133,11 @@ class BaseMediaEstimator(BaseEstimator):
         msg = f'{len(failures)} samples failed and were replaced by missing values ({details}).'
         warnings.warn(msg, SampleFailureWarning, stacklevel=4)
 
+    def _empty_result(self) -> Any:
+        """Return the result of a sample whose request builder asks to skip the backend."""
+
     def _build_requests(self, samples: list[Any], indices: range, seeds: list[int]) -> tuple[dict[int, Any], dict]:
-        """Read the samples of one batch and build their requests."""
+        """Read the samples of one batch and build their requests, or `None` for samples that skip the backend."""
         requests: dict[int, Any] = {}
         failures: dict[int, Exception] = {}
         for index in indices:
@@ -153,6 +160,9 @@ class BaseMediaEstimator(BaseEstimator):
             indices = range(start, min(start + self.batch_size, len(samples)))
             requests, read_failures = self._build_requests(samples, indices, seeds)
             failures.update(read_failures)
+            for index in [index for index, request in requests.items() if request is None]:
+                results[index] = self._empty_result()
+                del requests[index]
             outcomes = self.backend_.run(self.task, list(requests.values()))
             for index, outcome in zip(requests, outcomes, strict=True):
                 if isinstance(outcome, Exception):
@@ -518,7 +528,7 @@ class BaseEmbedder(TransformerMixin, BaseMediaEstimator):
         """Embed the samples and learn their mean and, when needed, a projection.
 
         With `X`, every sample is embedded, the mean is learned for centering, and a PCA projection to `dimensions`
-        is learned when the backend cannot shorten embeddings. Without `X`, a short probe text is embedded to find the
+        is learned when the backend cannot shorten embeddings. Without `X`, a small probe sample is embedded to find the
         number of dimensions, and nothing is centered or projected.
 
         Args:
@@ -536,7 +546,12 @@ class BaseEmbedder(TransformerMixin, BaseMediaEstimator):
         if embeddings:
             self._learn(np.stack(embeddings))
             return self
-        probe = self._embed([PROBE_TEXT])[0]
+        probes = {
+            'text': PROBE_TEXT,
+            'image': Image.new('RGB', (PROBE_SIZE, PROBE_SIZE)),
+            'audio': Audio(np.zeros(PROBE_SAMPLE_RATE, dtype=np.float32), PROBE_SAMPLE_RATE),
+        }
+        probe = self._embed([probes[self.input_kind]])[0]
         assert probe is not None
         self.n_features_out_ = probe[: self.dimensions].shape[0]
         self.mean_ = np.zeros(self.n_features_out_)

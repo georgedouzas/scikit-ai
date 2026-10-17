@@ -183,8 +183,7 @@ def e2e(session: nox.Session) -> None:
         '-o',
         'addopts=',
         '-v',
-        'e2e',
-        *session.posargs,
+        *(session.posargs or ['e2e']),
     )
 
 

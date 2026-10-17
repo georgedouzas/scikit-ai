@@ -72,23 +72,27 @@ is a string, because runtime clients live only in fitted attributes that a cache
 with an injected client is documented as not cacheable.
 
 ### Default models
-These are the planned defaults, to be confirmed by one real run per provider before each component is implemented.
+Backends implement a task only where their provider supports it, and components raise `UnsupportedBackendError` at
+`fit` elsewhere. OpenAI defaults are verified by the end-to-end suite. The `hf` and `litellm` defaults follow the
+providers' documented APIs and are verified when credentials or hardware are available.
 
-| Component | `hf` | `openai` | `litellm` | `replicate` |
-|---|---|---|---|---|
-| `AudioClassifier` | `laion/clap-htsat-unfused` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` | |
-| `VideoClassifier` | `microsoft/xclip-base-patch32` | `gpt-5-mini` (frames) | `gemini/gemini-2.5-flash` | |
-| `AudioDescriptor` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` | |
-| `VideoDescriptor` | `HuggingFaceTB/SmolVLM2-256M-Video-Instruct` | `gpt-5-mini` (frames) | `gemini/gemini-2.5-flash` | |
-| `TextExtractor` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `ImageEmbedder` | `clip-ViT-B-32` | | | `andreasjansson/clip-features` |
-| `AudioEmbedder` | `laion/clap-htsat-unfused` | | | a hosted CLAP model |
-| `VideoGenerator` | `Wan-AI/Wan2.1-T2V-1.3B-Diffusers` | `sora-2` | | `wan-video/wan-2.1-t2v-480p` |
-| `ImageEditor` | `timbrooks/instruct-pix2pix` | `gpt-image-1` | | `black-forest-labs/flux-kontext-dev` |
-| `ImageAnimator` | `stabilityai/stable-video-diffusion-img2vid-xt` | | | `wan-video/wan-2.1-i2v-480p` |
+| Component | `hf` | `openai` | `litellm` |
+|---|---|---|---|
+| `AudioClassifier` | `laion/clap-htsat-unfused` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` |
+| `VideoClassifier` | `HuggingFaceTB/SmolVLM-256M-Instruct` (frames) | `gpt-5-mini` (frames) | `gemini/gemini-2.5-flash` |
+| `AudioDescriptor` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-4o-audio-preview` | `gemini/gemini-2.5-flash` |
+| `VideoDescriptor` | `HuggingFaceTB/SmolVLM-256M-Instruct` (frames) | `gpt-5-mini` (frames) | `gemini/gemini-2.5-flash` |
+| `TextExtractor` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` |
+| `ImageEmbedder` | `clip-ViT-B-32` | | `cohere/embed-v4.0` |
+| `AudioEmbedder` | `laion/clap-htsat-unfused` | | |
+| `VideoGenerator` | `Wan-AI/Wan2.1-T2V-1.3B-Diffusers` | `sora-2` | |
+| `ImageEditor` | `timbrooks/instruct-pix2pix` | `gpt-image-1` | |
+| `ImageAnimator` | `stabilityai/stable-video-diffusion-img2vid-xt` | `sora-2` with the image as first frame | |
 
-Cloud coverage for `ImageEmbedder` and `AudioEmbedder` comes from Replicate-hosted open-source models, which the
-backends spec allows.
+Replicate is left out of the new tasks, because the inputs of the candidate models could not be confirmed and OpenAI
+covers the cloud side. No cloud provider offers audio embeddings, so `AudioEmbedder` is the one exception to cloud
+coverage. Sora takes durations of 4, 8 or 12 seconds and a few fixed sizes, so `VideoGenerator` and `ImageAnimator`
+round to the closest and resize the frames to the requested size.
 
 ## Risks / Trade-offs
 

@@ -14,35 +14,64 @@ from numpy.typing import NDArray
 from PIL import Image
 
 from skai.core import (
+    AnimationRequest,
     Audio,
     EmbeddingRequest,
     FineTuneError,
     FineTuneRequest,
+    ImageEditRequest,
     ImageGenerationRequest,
+    InvalidResponseError,
     Prompt,
     PromptedBackend,
     Segment,
     SpeechRequest,
     Transcript,
     TranscriptionRequest,
+    Video,
+    VideoGenerationRequest,
     build_image_prompt,
+    encode_png,
     import_optional,
     read_env,
-    to_data_url,
+    to_chat_messages,
 )
 
 CHAT_MODEL = 'gpt-5-mini'
 FINETUNE_MODEL = 'gpt-4.1-mini-2025-04-14'
 DEFAULT_VOICE = 'alloy'
+AUDIO_MODEL = 'gpt-4o-audio-preview'
+VIDEO_MODEL = 'sora-2'
 FINISHED_STATUSES = frozenset({'succeeded', 'failed', 'cancelled'})
+VIDEO_FINISHED_STATUSES = frozenset({'completed', 'failed'})
 REFUSAL_STATUS_CODES = frozenset({400, 403})
+VIDEO_SECONDS = (4, 8, 12)
+VIDEO_SIZES = ((1280, 720), (720, 1280))
+DEFAULT_MOTION_PROMPT = 'Animate this image with natural, gentle motion.'
 
 
-def _to_messages(prompt: Prompt) -> list[dict[str, Any]]:
-    """Turn a prompt into chat messages, with images as data URLs."""
-    content: list[dict[str, Any]] = [{'type': 'text', 'text': prompt.user}]
-    content += [{'type': 'image_url', 'image_url': {'url': to_data_url(image)}} for image in prompt.images]
-    return [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
+def _closest_video_size(size: tuple[int, int]) -> tuple[int, int]:
+    """Return the Sora size whose aspect ratio is closest to a width and height."""
+    width, height = size
+    return min(VIDEO_SIZES, key=lambda candidate: abs(candidate[0] / candidate[1] - width / height))
+
+
+def _closest_video_seconds(duration: float) -> int:
+    """Return the shortest Sora duration that covers a duration, or the longest one."""
+    return next((seconds for seconds in VIDEO_SECONDS if seconds >= duration), VIDEO_SECONDS[-1])
+
+
+def _to_png_file(image: Image.Image, name: str) -> tuple[str, bytes, str]:
+    """Encode an image as a named PNG upload."""
+    return name, encode_png(image), 'image/png'
+
+
+def _to_alpha_mask(mask: Image.Image, size: tuple[int, int]) -> Image.Image:
+    """Turn a mask whose white marks the edit region into the transparent-region mask that OpenAI expects."""
+    alpha = mask.convert('L').resize(size).point(lambda value: 255 - value)
+    transparent = Image.new('RGBA', size, (0, 0, 0, 255))
+    transparent.putalpha(alpha)
+    return transparent
 
 
 def _to_segments(response: Any, timestamps: str | None) -> tuple[Segment, ...]:
@@ -82,8 +111,11 @@ class OpenAIBackend(PromptedBackend):
         finetune_timeout:
             The number of seconds to wait for a fine-tuning job before giving up.
 
+        video_timeout:
+            The number of seconds to wait for a video job before giving up.
+
         poll_interval:
-            The number of seconds between checks of a fine-tuning job.
+            The number of seconds between checks of a fine-tuning or video job.
 
         options:
             Extra keyword arguments passed to every API call.
@@ -102,7 +134,17 @@ class OpenAIBackend(PromptedBackend):
         'synthesize_speech': 'gpt-4o-mini-tts',
         'generate_image': 'gpt-image-1',
         'transcribe': 'whisper-1',
+        'classify_audio': AUDIO_MODEL,
+        'describe_audio': AUDIO_MODEL,
+        'classify_video': CHAT_MODEL,
+        'describe_video': CHAT_MODEL,
+        'extract_fields': CHAT_MODEL,
+        'edit_image': 'gpt-image-1',
+        'generate_video': VIDEO_MODEL,
+        'animate_image': VIDEO_MODEL,
     }
+    supports_masks: ClassVar[bool] = True
+    accepts_audio: ClassVar[bool] = True
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
     accepts_context: ClassVar[bool] = True
     shortens_embeddings: ClassVar[bool] = True
@@ -117,6 +159,7 @@ class OpenAIBackend(PromptedBackend):
         voice: str = DEFAULT_VOICE,
         finetune_model: str = FINETUNE_MODEL,
         finetune_timeout: float = 3600.0,
+        video_timeout: float = 900.0,
         poll_interval: float = 15.0,
         options: dict | None = None,
         max_concurrency: int = 8,
@@ -128,6 +171,7 @@ class OpenAIBackend(PromptedBackend):
         self.voice = voice
         self.finetune_model = finetune_model
         self.finetune_timeout = finetune_timeout
+        self.video_timeout = video_timeout
         self.poll_interval = poll_interval
 
     @property
@@ -166,7 +210,7 @@ class OpenAIBackend(PromptedBackend):
         options = {'response_format': {'type': 'json_object'}} if prompt.json_output else {}
         response = self._api.chat.completions.create(
             model=model,
-            messages=_to_messages(prompt),
+            messages=to_chat_messages(prompt),
             **options,
             **self.call_options,
         )
@@ -254,6 +298,35 @@ class OpenAIBackend(PromptedBackend):
         )
         return Transcript(response.text.strip(), _to_segments(response, request.timestamps))
 
+    def _wait_for(self, job: Any, retrieve: Any, finished: frozenset[str], timeout: float, label: str) -> Any:
+        """Poll a job until its status is one of `finished`, or raise `TimeoutError` naming it."""
+        deadline = time.monotonic() + timeout
+        while job.status not in finished:
+            if time.monotonic() >= deadline:
+                msg = f'{label} {job.id} did not finish within {timeout} seconds.'
+                raise TimeoutError(msg)
+            time.sleep(self.poll_interval)
+            job = retrieve(job.id)
+        return job
+
+    def _create_video(self, model: str, prompt: str, seconds: int, size: tuple[int, int], **inputs: Any) -> Video:
+        """Create a video job, wait for it, and download the MP4."""
+        width, height = size
+        job = self._api.videos.create(
+            model=model,
+            prompt=prompt,
+            seconds=str(seconds),
+            size=f'{width}x{height}',
+            **inputs,
+            **self.call_options,
+        )
+        job = self._wait_for(job, self._api.videos.retrieve, VIDEO_FINISHED_STATUSES, self.video_timeout, 'Video job')
+        if job.status != 'completed':
+            msg = f'Video job {job.id} ended with status `{job.status}` ({getattr(job, "error", None)}).'
+            raise InvalidResponseError(msg)
+        content = self._api.videos.download_content(job.id)
+        return Video(data=content.read() if hasattr(content, 'read') else content.content)
+
     def _start_fine_tuning(self, training_data: bytes) -> Any:
         """Upload the training data and create the job, turning a refusal by OpenAI into `FineTuneError`."""
         try:
@@ -269,6 +342,9 @@ class OpenAIBackend(PromptedBackend):
     def fine_tune(self, request: FineTuneRequest) -> str:
         """Train a chat model on the prompts and answers, and wait until the job finishes.
 
+        A job that does not finish within `finetune_timeout` seconds raises `TimeoutError` naming the job, whose model
+        can be used later through the `model` parameter.
+
         Args:
             request:
                 The fine-tuning request.
@@ -277,26 +353,80 @@ class OpenAIBackend(PromptedBackend):
             The id of the fine-tuned model.
 
         Raises:
-            TimeoutError:
-                If the job does not finish within `finetune_timeout` seconds. The message names the job, whose model
-                can be used later through the `model` parameter.
-
             FineTuneError:
                 If OpenAI refuses the job, or the job fails or is cancelled.
         """
         lines = [
-            json.dumps({'messages': [*_to_messages(prompt), {'role': 'assistant', 'content': answer}]})
+            json.dumps({'messages': [*to_chat_messages(prompt), {'role': 'assistant', 'content': answer}]})
             for prompt, answer in request.examples
         ]
         job = self._start_fine_tuning('\n'.join(lines).encode())
-        deadline = time.monotonic() + self.finetune_timeout
-        while job.status not in FINISHED_STATUSES:
-            if time.monotonic() >= deadline:
-                msg = f'Fine-tuning job {job.id} did not finish within {self.finetune_timeout} seconds.'
-                raise TimeoutError(msg)
-            time.sleep(self.poll_interval)
-            job = self._api.fine_tuning.jobs.retrieve(job.id)
+        retrieve = self._api.fine_tuning.jobs.retrieve
+        job = self._wait_for(job, retrieve, FINISHED_STATUSES, self.finetune_timeout, 'Fine-tuning job')
         if job.status != 'succeeded':
             msg = f'Fine-tuning job {job.id} ended with status `{job.status}` ({job.error}).'
             raise FineTuneError(msg)
         return job.fine_tuned_model
+
+    def edit_image(self, request: ImageEditRequest) -> Image.Image:
+        """Edit an image with an image model, inside the mask when one is given.
+
+        Args:
+            request:
+                The image edit request.
+
+        Returns:
+            The edited image, resized to the size of the input.
+        """
+        image = request.image.convert('RGBA')
+        mask = {'mask': _to_png_file(_to_alpha_mask(request.mask, image.size), 'mask.png')} if request.mask else {}
+        response = self._api.images.edit(
+            model=self.resolve_model('edit_image'),
+            image=_to_png_file(image, 'image.png'),
+            prompt=request.instruction,
+            **mask,
+            **self.call_options,
+        )
+        edited = Image.open(io.BytesIO(base64.b64decode(response.data[0].b64_json))).convert('RGB')
+        return edited if edited.size == request.image.size else edited.resize(request.image.size)
+
+    def generate_video(self, request: VideoGenerationRequest) -> Video:
+        """Generate a video with Sora, then fit it to the requested duration and size.
+
+        Sora makes videos of 4, 8 or 12 seconds at a few sizes, so the closest are requested, and the video is trimmed
+        and resized. Trimming and resizing need the `video` extra.
+
+        Args:
+            request:
+                The video generation request.
+
+        Returns:
+            The video.
+        """
+        prompt = build_image_prompt(ImageGenerationRequest(request.prompt, request.size, request.style))
+        prompt = f'{prompt}. Avoid: {request.negative_prompt}' if request.negative_prompt else prompt
+        size = _closest_video_size(request.size)
+        seconds = _closest_video_seconds(request.duration)
+        video = self._create_video(self.resolve_model('generate_video'), prompt, seconds, size)
+        return video.trim(request.duration).resize(request.size)
+
+    def animate_image(self, request: AnimationRequest) -> Video:
+        """Animate an image with Sora, using it as the first frame.
+
+        Args:
+            request:
+                The animation request.
+
+        Returns:
+            The video, trimmed to the requested duration and resized to the size of the image.
+        """
+        size = _closest_video_size(request.image.size)
+        reference = _to_png_file(request.image.convert('RGB').resize(size), 'image.png')
+        video = self._create_video(
+            self.resolve_model('animate_image'),
+            request.motion_prompt or DEFAULT_MOTION_PROMPT,
+            _closest_video_seconds(request.duration),
+            size,
+            input_reference=reference,
+        )
+        return video.trim(request.duration).resize(request.image.size)

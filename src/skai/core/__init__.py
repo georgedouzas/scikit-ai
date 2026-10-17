@@ -23,7 +23,7 @@ from ._estimator import (
 )
 from ._io import encode_png, read_audio, read_image, read_video, sample_frames, to_data_url, to_object_array
 from ._media import Audio, Video
-from ._prompts import FineTuneRequest, Prompt, build_image_prompt, build_task_prompt
+from ._prompts import FineTuneRequest, Prompt, build_image_prompt, build_task_prompt, to_chat_messages
 from ._registry import list_backends, register
 from ._requests import (
     AnimationRequest,
@@ -44,7 +44,7 @@ from ._requests import (
     VideoGenerationRequest,
 )
 from ._terms import find_terms
-from ._utils import import_optional, read_env
+from ._utils import check_size, import_optional, read_env
 
 __all__: list[str] = [
     'TASKS',
@@ -88,6 +88,7 @@ __all__: list[str] = [
     'VideoGenerationRequest',
     'build_image_prompt',
     'build_task_prompt',
+    'check_size',
     'encode_png',
     'find_terms',
     'import_optional',
@@ -98,6 +99,7 @@ __all__: list[str] = [
     'read_video',
     'register',
     'sample_frames',
+    'to_chat_messages',
     'to_data_url',
     'to_object_array',
 ]

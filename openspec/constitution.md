@@ -212,8 +212,10 @@ project takes shape.
   parameters, validate them in `fit` through `_parameter_constraints`, expose learned state with a trailing
   underscore, and implement `predict`, `predict_proba` or `transform`. Backends are scikit-learn estimators too, so
   their parameters can be tuned as nested parameters.
-- Scope: task-oriented components whose primary input is text, an image, audio or video. Reinforcement learning,
-  agents, chat APIs and tabular data are out of scope.
+- Scope: task-oriented components whose primary input is text, an image, audio or video, in six task families:
+  classification, description, transcription, text, embedding and generation. Every component learns from the data
+  given to `fit`, and components chain in scikit-learn pipelines. Reinforcement learning, agents, chat APIs and
+  tabular data are out of scope.
 - Default models: every component and every provider-only backend string has a documented default model. This is a
   deliberate exception to the rule that the choice of model stays with the caller, so the components follow the
   scikit-learn practice of useful defaults. The caller can always override the model with `backend`.
@@ -234,4 +236,4 @@ project takes shape.
   tested against fake clients and modules.
 - Layout: library. The importable package under `src/skai` is distributed to others.
 
-**Version**: 1.1.1 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-17
+**Version**: 1.1.2 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-17

@@ -37,6 +37,27 @@ videos = pipeline.fit(None).predict(['Hello!', 'Thank you for watching.'])
 print([round(video.duration, 2) for video in videos])
 ```
 
+## Video, editing and animation
+
+`VideoGenerator` creates one video per prompt, of `duration` seconds and `size` pixels. `ImageEditor` applies one
+fixed `instruction` to every image, optionally inside a `mask`, and `ImageAnimator` turns every image into a short
+video that starts from it. Backends with fixed video lengths or sizes, such as Sora, generate the closest and trim
+and resize the result, which needs the `video` extra.
+
+```python exec="true" source="above" result="text"
+from PIL import Image
+from sklearn.pipeline import make_pipeline
+from skai.generation import ImageAnimator, ImageEditor, ImageGenerator, VideoGenerator
+
+video = VideoGenerator(duration=2, size=(320, 180), fps=8, backend='dummy').fit().predict(['a boat at sea'])[0]
+scene = make_pipeline(
+    ImageGenerator(size=(64, 64), backend='dummy'),
+    ImageEditor(instruction='make it night', backend='dummy'),
+    ImageAnimator(duration=1, backend='dummy'),
+)
+print(video.duration, scene.fit(None).predict(['a quiet harbor'])[0].duration)
+```
+
 ## Responsible use
 
 Cloned voices and talking avatars can imitate real people. Generate them only with the consent of the people they

@@ -3,6 +3,7 @@
 # Author: Georgios Douzas <gdouzas@icloud.com>
 # License: MIT
 
+import base64
 import json
 import re
 from collections.abc import Callable
@@ -12,6 +13,7 @@ from typing import Any
 from PIL import Image
 
 from ._errors import InvalidResponseError
+from ._io import to_data_url
 from ._media import Audio
 from ._requests import (
     ClassificationRequest,
@@ -255,7 +257,11 @@ def build_extraction_prompt(request: ExtractionRequest) -> Prompt:
         The prompt, which asks for a JSON object.
     """
     fields = '\n'.join(f'- {name}: {description}' for name, description in request.fields)
-    user = f'Fields:\n{fields}\n\nText:\n{request.text}'
+    examples = ''.join(
+        f'\n\nExample text:\n{text}\nExample answer:\n{json.dumps(record, ensure_ascii=False)}'
+        for text, record in request.examples
+    )
+    user = f'Fields:\n{fields}{examples}\n\nText:\n{request.text}'
     return Prompt(EXTRACTION_SYSTEM, user, json_output=True)
 
 
@@ -314,6 +320,25 @@ class FineTuneRequest:
 
     task: str
     examples: tuple[tuple[Prompt, str], ...]
+
+
+def to_chat_messages(prompt: Prompt) -> list[dict[str, Any]]:
+    """Turn a prompt into chat messages in the OpenAI format, with images as data URLs and audio as WAV.
+
+    Args:
+        prompt:
+            The prompt.
+
+    Returns:
+        The system and user messages.
+    """
+    content: list[dict[str, Any]] = [{'type': 'text', 'text': prompt.user}]
+    content += [{'type': 'image_url', 'image_url': {'url': to_data_url(image)}} for image in prompt.images]
+    content += [
+        {'type': 'input_audio', 'input_audio': {'data': base64.b64encode(audio.to_bytes()).decode(), 'format': 'wav'}}
+        for audio in prompt.audio
+    ]
+    return [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
 
 
 def build_task_prompt(

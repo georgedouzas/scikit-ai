@@ -9,40 +9,41 @@
 
 ## 2. Provider verification
 
-- [ ] 2.1 Make one real call per provider and new task with the planned default models, record the payloads under `tests/payloads/`, and update the default-model table in the design and the README with the models that work
+- [ ] 2.1 Make one real call per provider and new task with the planned default models on `hf` and `litellm`, record the payloads under `tests/payloads/`, and update the default-model table with the models that work (blocked on credentials and hardware)
+- [ ] 2.5 Add an OpenAI end-to-end scenario for every new component OpenAI supports (video generation and animation behind `SKAI_E2E_VIDEO=1`), record the payloads, and verify they pass
 - [x] 2.2 Add the `pdm e2e` harness: an `e2e/` suite outside `pdm tests` that loads credentials from `.env`, skips without them, records sanitized responses under `tests/payloads/<provider>/`, gates video generation behind `SKAI_E2E_VIDEO=1`, and a test that fails if a recording holds anything shaped like a credential
 - [x] 2.3 Run `pdm e2e` on the OpenAI backend for the built components, fix every adapter or default model that fails, and verify all OpenAI end-to-end tests pass
 - [x] 2.4 Add OpenAI end-to-end pipelines for the built components (descriptions → classifier, transcribe → summarize → translate, files between steps, descriptions → speech, descriptions → embeddings → `LogisticRegression`) on images generated once per session, and verify they pass
 
 ## 3. Classification and description
 
-- [ ] 3.1 Implement `AudioClassifier` and `VideoClassifier` on `dummy`, `hf`, `openai` and `litellm`, and verify the `classification` scenarios and the recorded-payload tests
-- [ ] 3.2 Implement `AudioDescriptor` and `VideoDescriptor` on `dummy`, `hf`, `openai` and `litellm`, including the audio capability check, and verify the `description` scenarios
-- [ ] 3.3 Document the four components in the classification and description guide pages, and verify `pdm docs build` passes
+- [x] 3.1 Implement `AudioClassifier` and `VideoClassifier` on `dummy`, `hf`, `openai` and `litellm`, and verify the `classification` scenarios
+- [x] 3.2 Implement `AudioDescriptor` and `VideoDescriptor` on `dummy`, `hf`, `openai` and `litellm`, including the audio capability check, and verify the `description` scenarios
+- [x] 3.3 Document the four components in the classification and description guide pages, and verify `pdm docs build` passes
 
 ## 4. Transcription and text
 
-- [ ] 4.1 Implement `VideoTranscriber` on every transcription backend, and verify the `transcription` scenarios
-- [ ] 4.2 Implement `TextExtractor` with JSON parsing, feature columns and `get_feature_names_out` on `dummy`, `hf`, `openai` and `litellm`, and verify the `text-processing` scenarios
-- [ ] 4.3 Document both components, and verify `pdm docs build` passes
+- [x] 4.1 Implement `VideoTranscriber` on every transcription backend, and verify the `transcription` scenarios
+- [x] 4.2 Implement `TextExtractor` with JSON parsing, feature columns and `get_feature_names_out` on `dummy`, `hf`, `openai` and `litellm`, and verify the `text-processing` scenarios
+- [x] 4.3 Document both components, and verify `pdm docs build` passes
 
 ## 5. Embedding
 
-- [ ] 5.1 Implement `ImageEmbedder` and `AudioEmbedder` on `dummy`, `hf` and `replicate`, and verify the `embedding` scenarios, including the shared text and image space
-- [ ] 5.2 Document both components and text-to-image retrieval, and verify `pdm docs build` passes
+- [x] 5.1 Implement `ImageEmbedder` on `dummy`, `hf` and `litellm`, and `AudioEmbedder` on `dummy` and `hf`, and verify the `embedding` scenarios, including the shared text and image space
+- [x] 5.2 Document both components and text-to-image retrieval, and verify `pdm docs build` passes
 
 ## 6. Generation
 
-- [ ] 6.1 Implement `VideoGenerator` on `dummy`, `hf`, `openai` and `replicate`, and verify its scenario
-- [ ] 6.2 Implement `ImageEditor`, with the mask capability check, on `dummy`, `hf`, `openai` and `replicate`, and verify its scenarios
-- [ ] 6.3 Implement `ImageAnimator` on `dummy`, `hf` and `replicate`, and verify its scenario
-- [ ] 6.4 Document the three components in the generation guide page, and verify `pdm docs build` passes
+- [x] 6.1 Implement `VideoGenerator` on `dummy`, `hf` and `openai`, and verify its scenario
+- [x] 6.2 Implement `ImageEditor`, with the mask capability check, on `dummy`, `hf` and `openai`, and verify its scenarios
+- [x] 6.3 Implement `ImageAnimator` on `dummy`, `hf` and `openai`, and verify its scenario
+- [x] 6.4 Document the three components in the generation guide page, and verify `pdm docs build` passes
 
 ## 7. Pipelines
 
-- [ ] 7.1 Add one test per requirement of the `pipelines` spec on `dummy`, including the backend call counts, the `joblib` cache and the cross-step grid search
-- [ ] 7.2 Write a "Pipelines" guide page with every recipe as an executed example and the caching advice, and verify `pdm docs build` passes
+- [x] 7.1 Add one test per requirement of the `pipelines` spec on `dummy`, including the backend call counts, the `joblib` cache and the cross-step grid search
+- [x] 7.2 Write a "Pipelines" guide page with every recipe as an executed example and the caching advice, and verify `pdm docs build` passes
 
 ## 8. Integration
 
-- [ ] 8.1 Update the README component table, the module-layout tests and the constitution's Project Profile, then run `pdm formatting`, `pdm checks`, `pdm docs build` and `pdm tests` in order and verify they all pass
+- [x] 8.1 Update the README component table, the module-layout tests and the constitution's Project Profile, then run `pdm formatting`, `pdm checks`, `pdm docs build` and `pdm tests` in order and verify they all pass

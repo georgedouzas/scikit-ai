@@ -4,7 +4,7 @@
   "request": {
     "encoding_format": "base64",
     "input": [
-      "Interest rates rose by half a percent."
+      "A cat was sitting on the rug."
     ],
     "model": "text-embedding-3-small"
   },

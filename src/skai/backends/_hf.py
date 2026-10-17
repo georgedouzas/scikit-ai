@@ -78,6 +78,7 @@ class HFBackend(PromptedBackend):
         'transcribe': 'openai/whisper-small',
     }
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
+    accepts_context: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -249,10 +250,15 @@ class HFBackend(PromptedBackend):
         """
         audio = request.audio.to_mono()
         inputs = {'raw': audio.samples.astype(np.float32), 'sampling_rate': audio.sample_rate}
-        output = self._pipeline('automatic-speech-recognition', self.resolve_model('transcribe'))(
+        pipeline = self._pipeline('automatic-speech-recognition', self.resolve_model('transcribe'))
+        generate_kwargs: dict[str, Any] = {'language': request.language} if request.language else {}
+        if request.vocabulary:
+            vocabulary = ', '.join(request.vocabulary)
+            generate_kwargs['prompt_ids'] = pipeline.tokenizer.get_prompt_ids(vocabulary, return_tensors='pt')
+        output = pipeline(
             inputs,
             return_timestamps=RETURN_TIMESTAMPS[request.timestamps],
-            generate_kwargs={'language': request.language} if request.language else {},
+            generate_kwargs=generate_kwargs,
             **self.call_options,
         )
         segments = _to_segments(output.get('chunks', []), audio.duration) if request.timestamps else ()

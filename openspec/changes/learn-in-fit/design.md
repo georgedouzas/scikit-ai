@@ -47,9 +47,10 @@ Requests that take examples (`SummaryRequest`, `TranslationRequest`, `Descriptio
 - **Translator glossary.** For terms that appear unchanged in at least two source texts (capitalized words and words
   with digits), the glossary keeps the target word that appears in every matching reference. It is a small
   heuristic, sent as `Glossary: term → translation` lines, and it is skipped when nothing matches.
-- **Transcriber vocabulary.** Terms are extracted with a regex and filtered against a small bundled word list
-  (`core/_words.txt`, the 10,000 most common English words). OpenAI receives them as the `prompt` of the
-  transcription call, and Hugging Face Whisper as `prompt_ids`. The `dummy` backend echoes them in its transcript, so
+- **Transcriber vocabulary.** Terms are found by `core.find_terms`, which keeps tokens with digits, inner capitals
+  or a capital mid-sentence. A bundled word list was considered and dropped, because it adds a large asset for a
+  small gain in recall. OpenAI receives the terms as the `prompt` of the transcription call, and Hugging Face
+  Whisper as `prompt_ids`. The `dummy` backend echoes them in its transcript, so
   tests can see them. Backends declare `accepts_context: ClassVar[bool]`.
 - **Embedder projection.** `fit` embeds `X` once. The PCA is fitted with NumPy SVD on the centered embeddings, so
   no scikit-learn decomposition objects are stored. Backends declare `shortens_embeddings: ClassVar[bool]`, which is
@@ -75,4 +76,5 @@ component stores `model_` and sends requests to a clone of its backend whose `mo
 - [Prompts grow with examples] → `max_examples` caps them, and `k_shot=0` turns examples off.
 - [The glossary and vocabulary heuristics are crude] → They are small, documented, visible as fitted attributes, and easy to replace later.
 - [Fine-tuning jobs can take long and fail] → A timeout names the job id, so the user can pass the finished model later as `model=`.
+- [Providers withdraw fine-tuning per account, as OpenAI did for self-serve organizations in 2026] → A refused job raises `FineTuneError` with the provider's reason, and backends without fine-tuning fail at `fit` with `UnsupportedBackendError`. The end-to-end test skips with the provider's reason when the account cannot fine-tune.
 - [`k_shot=None` changes meaning for classifiers] → 0.2 is unreleased, and the migration page documents it.

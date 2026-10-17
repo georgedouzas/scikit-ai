@@ -4,7 +4,7 @@
   "request": {
     "encoding_format": "base64",
     "input": [
-      "A single shiny red apple with a short stem sits on a pale surface against a neutral beige background."
+      "A small blue hatchback is parked diagonally in the middle of a quiet residential street lined with red-brick houses and leafless trees."
     ],
     "model": "text-embedding-3-small"
   },
@@ -19,8 +19,8 @@
     "model": "text-embedding-3-small",
     "object": "list",
     "usage": {
-      "prompt_tokens": 20,
-      "total_tokens": 20
+      "prompt_tokens": 28,
+      "total_tokens": 28
     }
   },
   "status": 200

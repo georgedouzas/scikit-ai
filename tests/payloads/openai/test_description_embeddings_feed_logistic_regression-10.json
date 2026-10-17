@@ -1,0 +1,27 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "encoding_format": "base64",
+    "input": [
+      "A blue compact hatchback is parked diagonally in the middle of a quiet residential street lined with red-brick houses under an overcast sky."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "<8192 characters>",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 29,
+      "total_tokens": 29
+    }
+  },
+  "status": 200
+}

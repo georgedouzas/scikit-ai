@@ -1,0 +1,28 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "dimensions": 8,
+    "encoding_format": "base64",
+    "input": [
+      "The city opened a new library with ten thousand books, a caf\u00e9 and free study rooms for students."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "AIAJvwAAfj0AYPE+AGCAvQDAqj4AwIW+AODMvgDAwD4=",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 20,
+      "total_tokens": 20
+    }
+  },
+  "status": 200
+}

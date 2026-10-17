@@ -2,6 +2,7 @@
 
 from ._backend import TASKS, Backend, PromptedBackend
 from ._errors import (
+    FineTuneError,
     InvalidResponseError,
     InvalidSampleError,
     MediaReadError,
@@ -10,11 +11,19 @@ from ._errors import (
     SampleError,
     SampleFailureWarning,
     UnsupportedBackendError,
+    UnusedFitDataWarning,
 )
-from ._estimator import BaseClassifier, BaseEmbedder, BaseGenerator, BaseMediaEstimator, BaseMediaGenerator
+from ._estimator import (
+    BaseClassifier,
+    BaseEmbedder,
+    BaseGenerator,
+    BaseMediaEstimator,
+    BaseMediaGenerator,
+    BaseSupervisedGenerator,
+)
 from ._io import encode_png, read_audio, read_image, read_video, sample_frames, to_data_url, to_object_array
 from ._media import Audio, Video
-from ._prompts import Prompt, build_image_prompt
+from ._prompts import FineTuneRequest, Prompt, build_image_prompt, build_task_prompt
 from ._registry import list_backends, register
 from ._requests import (
     AnimationRequest,
@@ -34,6 +43,7 @@ from ._requests import (
     VideoFrames,
     VideoGenerationRequest,
 )
+from ._terms import find_terms
 from ._utils import import_optional, read_env
 
 __all__: list[str] = [
@@ -47,10 +57,13 @@ __all__: list[str] = [
     'BaseGenerator',
     'BaseMediaEstimator',
     'BaseMediaGenerator',
+    'BaseSupervisedGenerator',
     'ClassificationRequest',
     'DescriptionRequest',
     'EmbeddingRequest',
     'ExtractionRequest',
+    'FineTuneError',
+    'FineTuneRequest',
     'ImageEditRequest',
     'ImageGenerationRequest',
     'InvalidResponseError',
@@ -69,11 +82,14 @@ __all__: list[str] = [
     'TranscriptionRequest',
     'TranslationRequest',
     'UnsupportedBackendError',
+    'UnusedFitDataWarning',
     'Video',
     'VideoFrames',
     'VideoGenerationRequest',
     'build_image_prompt',
+    'build_task_prompt',
     'encode_png',
+    'find_terms',
     'import_optional',
     'list_backends',
     'read_audio',

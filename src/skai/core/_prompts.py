@@ -5,6 +5,7 @@
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -91,6 +92,14 @@ def _format_input(sample: Sample, images: list[Image.Image], audio: list[Audio],
         return f'{text} with audio {_format_input(sample.audio, images, audio, include_audio)}'
     images.append(sample)
     return f'<image {len(images)}>'
+
+
+def _format_pairs(pairs: tuple[tuple[str, str], ...], source: str, target: str) -> str:
+    """Format example pairs of texts and their references for a prompt."""
+    if not pairs:
+        return ''
+    examples = '\n\n'.join(f'{source}: {text}\n{target}: {reference}' for text, reference in pairs)
+    return f' Follow the examples.\n\nExamples:\n\n{examples}'
 
 
 def _media_kind(sample: Sample) -> str:
@@ -184,7 +193,8 @@ def build_summary_prompt(request: SummaryRequest) -> Prompt:
         The prompt.
     """
     style = f' Write it in this style: {request.style}.' if request.style else ''
-    user = f'Summarize the following text in at most {request.max_length} words.{style}\n\n{request.text}'
+    examples = _format_pairs(request.examples, 'Text', 'Summary')
+    user = f'Summarize the following text in at most {request.max_length} words.{style}{examples}\n\n{request.text}'
     return Prompt(SUMMARY_SYSTEM, user)
 
 
@@ -199,7 +209,10 @@ def build_translation_prompt(request: TranslationRequest) -> Prompt:
         The prompt.
     """
     source = f' from {request.source_language}' if request.source_language else ''
-    user = f'Translate the following text{source} into {request.target_language}.\n\n{request.text}'
+    glossary = ''.join(f'\n- {term} → {translation}' for term, translation in request.glossary)
+    glossary = f'\n\nTranslate these terms as given:{glossary}' if glossary else ''
+    examples = _format_pairs(request.examples, 'Text', 'Translation')
+    user = f'Translate the following text{source} into {request.target_language}.{glossary}{examples}\n\n{request.text}'
     return Prompt(TRANSLATION_SYSTEM, user)
 
 
@@ -218,10 +231,17 @@ def build_description_prompt(request: DescriptionRequest, include_audio: bool = 
     """
     images: list[Image.Image] = []
     audio: list[Audio] = []
+    lines = []
+    for number, (sample, description) in enumerate(request.examples, start=1):
+        example = _format_input(sample, images, audio, include_audio)
+        lines += [f'Example {number}: {example}', f'Description: {description}', '']
     reference = _format_input(request.sample, images, audio, include_audio)
     instructions = f' {request.instructions}' if request.instructions else ''
     detail = DETAIL_INSTRUCTIONS[request.detail].format(kind=_media_kind(request.sample))
-    return Prompt(DESCRIPTION_SYSTEM, f'{reference}\n\n{detail}{instructions}', tuple(images), tuple(audio))
+    if request.examples:
+        detail = f'{detail} Follow the style and length of the example descriptions.'
+    user = '\n'.join([*lines, reference, '', f'{detail}{instructions}'])
+    return Prompt(DESCRIPTION_SYSTEM, user, tuple(images), tuple(audio))
 
 
 def build_extraction_prompt(request: ExtractionRequest) -> Prompt:
@@ -278,3 +298,57 @@ def build_image_prompt(request: ImageGenerationRequest) -> str:
         The prompt, with the style appended.
     """
     return f'{request.prompt}. Style: {request.style}' if request.style else request.prompt
+
+
+@dataclass(frozen=True, eq=False)
+class FineTuneRequest:
+    """Ask a backend to train a model on prompts and their expected answers.
+
+    Args:
+        task:
+            The task the model is trained for.
+
+        examples:
+            Pairs of a prompt and the answer the model must give.
+    """
+
+    task: str
+    examples: tuple[tuple[Prompt, str], ...]
+
+
+def build_task_prompt(
+    task: str,
+    request: ClassificationRequest | SummaryRequest | TranslationRequest | DescriptionRequest | ExtractionRequest,
+) -> Prompt:
+    """Build the prompt that a prompted backend sends for a task and a request.
+
+    Args:
+        task:
+            The name of the task.
+
+        request:
+            The request of the task.
+
+    Returns:
+        The prompt.
+
+    Raises:
+        ValueError:
+            If the task is not answered by prompting.
+    """
+    builders: dict[str, Callable[[Any], Prompt]] = {
+        'classify_text': build_classification_prompt,
+        'classify_image': build_classification_prompt,
+        'classify_audio': build_classification_prompt,
+        'classify_video': build_classification_prompt,
+        'summarize': build_summary_prompt,
+        'translate': build_translation_prompt,
+        'describe_image': build_description_prompt,
+        'describe_audio': build_description_prompt,
+        'describe_video': build_description_prompt,
+        'extract_fields': build_extraction_prompt,
+    }
+    if task not in builders:
+        msg = f'The task `{task}` is not answered by prompting.'
+        raise ValueError(msg)
+    return builders[task](request)

@@ -10,7 +10,7 @@
       {
         "content": [
           {
-            "text": "Labels:\n- negative\n- positive\n\nExample 1:\nInput: Awful quality.\nOutput: negative\n\nExample 2:\nInput: Great value.\nOutput: positive\n\nInput: Absolutely wonderful, I love it!\nOutput:",
+            "text": "Labels:\n- negative\n- positive\n\nExample 1:\nInput: Great value.\nOutput: positive\n\nExample 2:\nInput: Awful quality.\nOutput: negative\n\nInput: Absolutely wonderful, I love it!\nOutput:",
             "type": "text"
           }
         ],
@@ -32,18 +32,18 @@
         }
       }
     ],
-    "created": 1792256982,
-    "id": "chatcmpl-Ea2CcKM2uOpGyFx7dUjG11l0f9oLU",
+    "created": 1792265696,
+    "id": "chatcmpl-Ea4TAZNj3aLV1mqp2VKcOC7G2CMag",
     "model": "gpt-5-mini-2025-08-07",
     "object": "chat.completion",
     "service_tier": "default",
     "system_fingerprint": null,
     "usage": {
-      "completion_tokens": 10,
+      "completion_tokens": 74,
       "completion_tokens_details": {
         "accepted_prediction_tokens": 0,
         "audio_tokens": 0,
-        "reasoning_tokens": 0,
+        "reasoning_tokens": 64,
         "rejected_prediction_tokens": 0
       },
       "prompt_tokens": 75,
@@ -51,7 +51,7 @@
         "audio_tokens": 0,
         "cached_tokens": 0
       },
-      "total_tokens": 85
+      "total_tokens": 149
     }
   },
   "status": 200

@@ -1,0 +1,17 @@
+{
+  "method": "POST",
+  "path": "/v1/files",
+  "request": null,
+  "response": {
+    "bytes": 3224,
+    "created_at": 1792265842,
+    "expires_at": null,
+    "filename": "train.jsonl",
+    "id": "file-Q3UwRHGjeLzoX9rn6VV5Ke",
+    "object": "file",
+    "purpose": "fine-tune",
+    "status": "processed",
+    "status_details": null
+  },
+  "status": 200
+}

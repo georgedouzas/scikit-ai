@@ -12,27 +12,58 @@ from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin, clone
 from sklearn.utils import Tags, check_random_state
 from sklearn.utils._param_validation import Interval, StrOptions
 from sklearn.utils.multiclass import check_classification_targets, type_of_target
 from sklearn.utils.validation import check_is_fitted
 
 from ._backend import Backend
-from ._errors import MediaReadError, SampleError, SampleFailureWarning
+from ._errors import MediaReadError, SampleError, SampleFailureWarning, UnsupportedBackendError
 from ._io import MediaKind, check_text, read_audio, read_image, read_video, to_object_array, to_samples, write_outputs
-from ._registry import resolve_backend
+from ._prompts import NO_LABEL, FineTuneRequest, build_task_prompt
+from ._registry import list_backends, resolve_backend
 from ._requests import ClassificationRequest, EmbeddingRequest
 
 MAX_SEED = 2**31 - 1
 PROBE_TEXT = 'dimension probe'
 MULTILABEL_THRESHOLD = 0.5
+DEFAULT_MAX_EXAMPLES = 8
 READERS: dict[str, Callable[[Any, int], Any]] = {
     'text': check_text,
     'image': read_image,
     'audio': read_audio,
     'video': read_video,
 }
+
+
+def _select_indices(
+    k_shot: int | ArrayLike | None,
+    groups: list[Any],
+    random_state: int | np.random.RandomState | None,
+    max_examples: int | None,
+) -> NDArray[np.int_]:
+    """Select the indices of the examples among samples whose group labels are given.
+
+    `k_shot=None` takes one random sample per group, capped at `max_examples`. `0` takes none, an integer takes that
+    many at random, and an array takes those indices.
+    """
+    rng = check_random_state(random_state)
+    if k_shot is None:
+        by_group: dict[Any, list[int]] = {}
+        for index, group in enumerate(groups):
+            by_group.setdefault(group, []).append(index)
+        indices = np.array(sorted(int(rng.choice(members)) for members in by_group.values()), dtype=int)
+        if max_examples is not None and indices.shape[0] > max_examples:
+            indices = np.sort(rng.choice(indices, size=max_examples, replace=False))
+        return indices
+    if isinstance(k_shot, Integral):
+        count = int(k_shot)
+        if count > len(groups):
+            msg = f'`k_shot` is {count} but only {len(groups)} samples were given.'
+            raise ValueError(msg)
+        return np.sort(rng.choice(len(groups), size=count, replace=False))
+    return np.asarray(k_shot, dtype=int)
 
 
 class BaseMediaEstimator(BaseEstimator):
@@ -61,6 +92,26 @@ class BaseMediaEstimator(BaseEstimator):
         self._validate_params()
         backend = self.default_backend if self.backend is None else self.backend
         self.backend_ = resolve_backend(backend, self.task)
+
+    def _fine_tune(self, samples: list[Any], answers: list[str]) -> None:
+        """Train a model on the samples and their answers, and send later requests to it without examples."""
+        if 'fine_tune' not in type(self.backend_).supported_tasks():
+            backends = list_backends('fine_tune')
+            msg = f'{type(self.backend_).__name__} cannot fine-tune. Backends that can: {backends}.'
+            raise UnsupportedBackendError(msg)
+        minimum = self.backend_.min_finetune_examples
+        if len(samples) < minimum:
+            msg = f'Fine-tuning needs at least {minimum} samples, but {len(samples)} were given.'
+            raise ValueError(msg)
+        self.examples_: tuple[tuple[Any, Any], ...] = ()
+        prompts = [
+            build_task_prompt(self.task, self._build_request(self._read(sample, index), 0))
+            for index, sample in enumerate(samples)
+        ]
+        self.model_ = self.backend_.fine_tune(FineTuneRequest(self.task, tuple(zip(prompts, answers, strict=True))))
+        tuned = clone(self.backend_)
+        tuned.set_params(model=self.model_)
+        self.backend_ = tuned.connect()
 
     def _read(self, sample: Any, index: int) -> Any:
         """Read one sample as the input kind of the component."""
@@ -168,6 +219,80 @@ class BaseGenerator(TransformerMixin, BaseMediaEstimator):
         return self.predict(X)
 
 
+class BaseSupervisedGenerator(BaseGenerator):
+    """Generate outputs and learn from reference outputs given as `y` in `fit`.
+
+    `fit(X, y)` learns from the references. `fit_transform(X, y)`, which pipelines use for intermediate steps, ignores
+    `y` unless `use_y=True`, because `y` is then the target of the final step.
+    """
+
+    _parameter_constraints: ClassVar[dict] = {
+        **BaseGenerator._parameter_constraints,
+        'k_shot': [Interval(Integral, 0, None, closed='left'), 'array-like', None],
+        'max_examples': [Interval(Integral, 1, None, closed='left'), None],
+        'use_y': [StrOptions({'auto'}), 'boolean'],
+    }
+
+    def _learn(self, samples: list[Any], references: list[Any]) -> None:
+        """Learn the fitted state from samples and their references, which are empty without `y`."""
+        indices = _select_indices(self.k_shot, list(range(len(samples))), self.random_state, self.max_examples)
+        self.examples_ = tuple((self._read(samples[index], index), references[index]) for index in indices)
+
+    def _fit(self, X: ArrayLike | None, y: ArrayLike | None) -> Self:
+        """Validate the parameters, resolve the backend and learn from the references."""
+        self._connect()
+        self._prepare()
+        samples = to_samples(X) if y is not None else []
+        references = to_samples(y) if y is not None else []
+        if len(samples) != len(references):
+            msg = f'`X` has {len(samples)} samples but `y` has {len(references)} references.'
+            raise ValueError(msg)
+        self._learn(samples, references)
+        if getattr(self, 'adaptation', 'examples') == 'finetune':
+            if not references:
+                msg = 'Fine-tuning needs reference outputs as `y`.'
+                raise ValueError(msg)
+            self._fine_tune(samples, [str(reference) for reference in references])
+        return self
+
+    def fit(self, X: ArrayLike | None = None, y: ArrayLike | None = None) -> Self:
+        """Learn from reference outputs.
+
+        Args:
+            X:
+                The training samples.
+
+            y:
+                The reference output of every sample, such as its summary or transcript. Without it, the component
+                predicts zero-shot.
+
+        Returns:
+            The fitted component.
+        """
+        return self._fit(X, None if self.use_y is False else y)
+
+    def fit_transform(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any) -> NDArray:
+        """Fit and return the outputs, ignoring `y` unless `use_y=True`.
+
+        Pipelines fit intermediate steps through this method and pass them the target of the final step, so `y` is
+        not read as references by default.
+
+        Args:
+            X:
+                The samples.
+
+            y:
+                The references, used only when `use_y=True`.
+
+            **fit_params:
+                Ignored.
+
+        Returns:
+            The outputs, in input order.
+        """
+        return self._fit(X, y if self.use_y is True else None).transform(X)
+
+
 class BaseMediaGenerator(BaseGenerator):
     """Generate images, audio or video and return them in the requested output format."""
 
@@ -192,6 +317,7 @@ class BaseClassifier(ClassifierMixin, BaseMediaEstimator):
         'labels': [list, dict, None],
         'instructions': [str, None],
         'k_shot': [Interval(Integral, 0, None, closed='left'), 'array-like', None],
+        'adaptation': [StrOptions({'examples', 'finetune'})],
     }
 
     def __sklearn_tags__(self) -> Tags:
@@ -239,18 +365,12 @@ class BaseClassifier(ClassifierMixin, BaseMediaEstimator):
         return (str(target),)
 
     def _select_examples(self, samples: list[Any], y: NDArray | None) -> tuple[tuple[Any, tuple[str, ...]], ...]:
-        """Select the labeled examples that are passed to the backend."""
-        if y is None or self.k_shot is None or (isinstance(self.k_shot, Integral) and self.k_shot == 0):
+        """Select the labeled examples that are passed to the backend, one per class by default."""
+        if y is None:
             return ()
-        if isinstance(self.k_shot, Integral):
-            k_shot = int(self.k_shot)
-            if k_shot > len(samples):
-                msg = f'`k_shot` is {k_shot} but only {len(samples)} samples were given.'
-                raise ValueError(msg)
-            indices = check_random_state(self.random_state).choice(len(samples), size=k_shot, replace=False)
-        else:
-            indices = np.asarray(self.k_shot, dtype=int)
-        return tuple((self._read(samples[index], index), self._label_names_of(y[index])) for index in indices)
+        groups = [self._label_names_of(target) for target in y]
+        indices = _select_indices(self.k_shot, groups, self.random_state, None)
+        return tuple((self._read(samples[index], index), groups[index]) for index in indices)
 
     def _build_request(self, sample: Any, seed: int) -> ClassificationRequest:
         """Build the classification request of one sample."""
@@ -278,6 +398,10 @@ class BaseClassifier(ClassifierMixin, BaseMediaEstimator):
 
         Returns:
             The fitted classifier.
+
+        Raises:
+            ValueError:
+                If `adaptation='finetune'` and no targets are given.
         """
         self._connect()
         samples = to_samples(X)
@@ -286,6 +410,13 @@ class BaseClassifier(ClassifierMixin, BaseMediaEstimator):
             self._fit_labels()
         else:
             targets = self._fit_targets(samples, y)
+        if self.adaptation == 'finetune':
+            if targets is None:
+                msg = 'Fine-tuning needs the targets `y`.'
+                raise ValueError(msg)
+            answers = [', '.join(self._label_names_of(target)) or NO_LABEL for target in targets]
+            self._fine_tune(samples, answers)
+            return self
         self.examples_ = self._select_examples(samples, targets)
         return self
 
@@ -337,31 +468,58 @@ class BaseClassifier(ClassifierMixin, BaseMediaEstimator):
 
 
 class BaseEmbedder(TransformerMixin, BaseMediaEstimator):
-    """Map every sample to a fixed-size vector."""
+    """Map every sample to a fixed-size vector, learning centering and a projection from the samples in `fit`."""
 
     _parameter_constraints: ClassVar[dict] = {
         **BaseMediaEstimator._parameter_constraints,
         'dimensions': [Interval(Integral, 1, None, closed='left'), None],
+        'center': ['boolean'],
         'normalize': ['boolean'],
     }
 
     def _build_request(self, sample: Any, seed: int) -> EmbeddingRequest:
-        """Build the embedding request of one sample."""
-        return EmbeddingRequest(sample, self.dimensions)
+        """Build the embedding request of one sample, asking for fewer dimensions only when the backend can."""
+        native = self.dimensions if self.backend_.shortens_embeddings else None
+        return EmbeddingRequest(sample, native)
 
-    def _to_vector(self, embedding: ArrayLike) -> NDArray[np.float64]:
-        """Shorten and normalize one embedding."""
-        vector = np.asarray(embedding, dtype=float)[: self.dimensions]
+    def _embed(self, X: ArrayLike) -> list[NDArray[np.float64] | None]:
+        """Return the raw embedding of every sample, or `None` for a failed sample."""
+        return [None if embedding is None else np.asarray(embedding, dtype=float) for embedding in self._run_task(X)]
+
+    def _to_vector(self, embedding: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Project or shorten, center and normalize one raw embedding."""
+        if self.components_ is not None:
+            vector = (embedding - self.mean_) @ self.components_.T
+        else:
+            vector = embedding[: self.n_features_out_]
+            vector = vector - self.mean_ if self.center else vector
         if not self.normalize:
             return vector
         norm = np.linalg.norm(vector)
         return vector / norm if norm > 0 else vector
 
-    def fit(self, X: ArrayLike | None = None, y: ArrayLike | None = None) -> Self:
-        """Resolve the backend and find the number of dimensions of the embeddings.
+    def _learn(self, embeddings: NDArray[np.float64]) -> None:
+        """Learn the mean and, when the backend cannot shorten embeddings, a PCA projection to `dimensions`."""
+        if self.dimensions is not None and not self.backend_.shortens_embeddings:
+            if embeddings.shape[0] < self.dimensions:
+                msg = f'A projection to {self.dimensions} dimensions needs at least {self.dimensions} samples.'
+                raise ValueError(msg)
+            self.mean_ = embeddings.mean(axis=0)
+            _, _, vt = np.linalg.svd(embeddings - self.mean_, full_matrices=False)
+            self.components_: NDArray[np.float64] | None = vt[: self.dimensions]
+            self.n_features_out_ = self.dimensions
+            return
+        shortened = embeddings[:, : self.dimensions]
+        self.mean_ = shortened.mean(axis=0)
+        self.components_ = None
+        self.n_features_out_ = shortened.shape[1]
 
-        When `dimensions` is `None`, the first sample of `X`, or a short probe text when `X` is `None`, is embedded to
-        find the number of dimensions.
+    def fit(self, X: ArrayLike | None = None, y: ArrayLike | None = None) -> Self:
+        """Embed the samples and learn their mean and, when needed, a projection.
+
+        With `X`, every sample is embedded, the mean is learned for centering, and a PCA projection to `dimensions`
+        is learned when the backend cannot shorten embeddings. Without `X`, a short probe text is embedded to find the
+        number of dimensions, and nothing is centered or projected.
 
         Args:
             X:
@@ -374,11 +532,15 @@ class BaseEmbedder(TransformerMixin, BaseMediaEstimator):
             The fitted embedder.
         """
         self._connect()
-        if self.dimensions is not None:
-            self.n_features_out_ = self.dimensions
+        embeddings = [embedding for embedding in self._embed(to_samples(X)) if embedding is not None]
+        if embeddings:
+            self._learn(np.stack(embeddings))
             return self
-        probe = to_samples(X)[:1] or [PROBE_TEXT]
-        self.n_features_out_ = self._to_vector(self._run_task(probe)[0]).shape[0]
+        probe = self._embed([PROBE_TEXT])[0]
+        assert probe is not None
+        self.n_features_out_ = probe[: self.dimensions].shape[0]
+        self.mean_ = np.zeros(self.n_features_out_)
+        self.components_ = None
         return self
 
     def transform(self, X: ArrayLike) -> NDArray[np.float64]:
@@ -391,7 +553,7 @@ class BaseEmbedder(TransformerMixin, BaseMediaEstimator):
         Returns:
             An array of shape `(n_samples, n_features_out_)`. A failed sample has a row of NaN.
         """
-        results = self._run_task(X)
+        results = self._embed(X)
         embeddings = np.full((len(results), self.n_features_out_), np.nan)
         for row, embedding in enumerate(results):
             if embedding is not None:

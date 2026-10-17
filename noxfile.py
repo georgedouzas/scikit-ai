@@ -175,7 +175,16 @@ def e2e(session: nox.Session) -> None:
     """
     session.run('pdm', 'install', '-G', 'openai', '-G', 'video', '-dG', 'e2e', external=True)
     session.run(
-        'pytest', '-p', 'no:randomly', '-p', 'no:cacheprovider', '-o', 'addopts=', '-v', 'e2e', *session.posargs,
+        'pytest',
+        '-p',
+        'no:randomly',
+        '-p',
+        'no:cacheprovider',
+        '-o',
+        'addopts=',
+        '-v',
+        'e2e',
+        *session.posargs,
     )
 
 

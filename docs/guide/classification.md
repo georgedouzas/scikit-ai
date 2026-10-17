@@ -29,4 +29,10 @@ classifier = ImageClassifier(labels=['cat', 'dog'], backend='dummy').fit()
 print(classifier.predict(images), classifier.predict_proba(images).shape)
 ```
 
+## What fit learns
+
+With targets, a classifier learns `classes_` and passes `examples_` to the backend: one example per class by default,
+none with `k_shot=0`. With `adaptation='finetune'`, it trains a model on all the training data instead, on backends
+that support fine-tuning.
+
 The API reference is in [`skai.classification`](../api/classification/index.md).

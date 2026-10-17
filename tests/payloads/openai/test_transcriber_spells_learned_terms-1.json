@@ -1,0 +1,15 @@
+{
+  "method": "POST",
+  "path": "/v1/audio/speech",
+  "request": {
+    "input": "Please restart the Skaivox server tonight.",
+    "model": "gpt-4o-mini-tts",
+    "response_format": "wav",
+    "voice": "alloy"
+  },
+  "response": {
+    "bytes": 132044,
+    "content_type": "audio/wav"
+  },
+  "status": 200
+}

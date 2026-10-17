@@ -5,6 +5,8 @@
 
 import base64
 import io
+import json
+import time
 from typing import Any, ClassVar
 
 import numpy as np
@@ -14,6 +16,8 @@ from PIL import Image
 from skai.core import (
     Audio,
     EmbeddingRequest,
+    FineTuneError,
+    FineTuneRequest,
     ImageGenerationRequest,
     Prompt,
     PromptedBackend,
@@ -28,7 +32,17 @@ from skai.core import (
 )
 
 CHAT_MODEL = 'gpt-5-mini'
+FINETUNE_MODEL = 'gpt-4.1-mini-2025-04-14'
 DEFAULT_VOICE = 'alloy'
+FINISHED_STATUSES = frozenset({'succeeded', 'failed', 'cancelled'})
+REFUSAL_STATUS_CODES = frozenset({400, 403})
+
+
+def _to_messages(prompt: Prompt) -> list[dict[str, Any]]:
+    """Turn a prompt into chat messages, with images as data URLs."""
+    content: list[dict[str, Any]] = [{'type': 'text', 'text': prompt.user}]
+    content += [{'type': 'image_url', 'image_url': {'url': to_data_url(image)}} for image in prompt.images]
+    return [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
 
 
 def _to_segments(response: Any, timestamps: str | None) -> tuple[Segment, ...]:
@@ -62,6 +76,15 @@ class OpenAIBackend(PromptedBackend):
         voice:
             The voice used for speech synthesis when the request names none.
 
+        finetune_model:
+            The base model that fine-tuning starts from.
+
+        finetune_timeout:
+            The number of seconds to wait for a fine-tuning job before giving up.
+
+        poll_interval:
+            The number of seconds between checks of a fine-tuning job.
+
         options:
             Extra keyword arguments passed to every API call.
 
@@ -81,6 +104,8 @@ class OpenAIBackend(PromptedBackend):
         'transcribe': 'whisper-1',
     }
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
+    accepts_context: ClassVar[bool] = True
+    shortens_embeddings: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -90,6 +115,9 @@ class OpenAIBackend(PromptedBackend):
         base_url: str | None = None,
         client: Any = None,
         voice: str = DEFAULT_VOICE,
+        finetune_model: str = FINETUNE_MODEL,
+        finetune_timeout: float = 3600.0,
+        poll_interval: float = 15.0,
         options: dict | None = None,
         max_concurrency: int = 8,
     ) -> None:
@@ -98,6 +126,9 @@ class OpenAIBackend(PromptedBackend):
         self.base_url = base_url
         self.client = client
         self.voice = voice
+        self.finetune_model = finetune_model
+        self.finetune_timeout = finetune_timeout
+        self.poll_interval = poll_interval
 
     @property
     def _api(self) -> Any:
@@ -132,10 +163,13 @@ class OpenAIBackend(PromptedBackend):
         Returns:
             The answer of the model.
         """
-        content: list[dict[str, Any]] = [{'type': 'text', 'text': prompt.user}]
-        content += [{'type': 'image_url', 'image_url': {'url': to_data_url(image)}} for image in prompt.images]
-        messages = [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
-        response = self._api.chat.completions.create(model=model, messages=messages, **self.call_options)
+        options = {'response_format': {'type': 'json_object'}} if prompt.json_output else {}
+        response = self._api.chat.completions.create(
+            model=model,
+            messages=_to_messages(prompt),
+            **options,
+            **self.call_options,
+        )
         return response.choices[0].message.content or ''
 
     def embed_text(self, request: EmbeddingRequest) -> NDArray[np.floating]:
@@ -209,6 +243,7 @@ class OpenAIBackend(PromptedBackend):
             The transcript.
         """
         options: dict[str, Any] = {'language': request.language} if request.language else {}
+        options |= {'prompt': ', '.join(request.vocabulary)} if request.vocabulary else {}
         if request.timestamps:
             options |= {'response_format': 'verbose_json', 'timestamp_granularities': [request.timestamps]}
         response = self._api.audio.transcriptions.create(
@@ -218,3 +253,50 @@ class OpenAIBackend(PromptedBackend):
             **self.call_options,
         )
         return Transcript(response.text.strip(), _to_segments(response, request.timestamps))
+
+    def _start_fine_tuning(self, training_data: bytes) -> Any:
+        """Upload the training data and create the job, turning a refusal by OpenAI into `FineTuneError`."""
+        try:
+            training_file = self._api.files.create(file=('train.jsonl', training_data), purpose='fine-tune')
+            return self._api.fine_tuning.jobs.create(model=self.finetune_model, training_file=training_file.id)
+        except Exception as error:
+            if getattr(error, 'status_code', None) not in REFUSAL_STATUS_CODES:
+                raise
+            reason = getattr(error, 'message', str(error))
+            msg = f'OpenAI refused the fine-tuning job: {reason}'
+            raise FineTuneError(msg) from error
+
+    def fine_tune(self, request: FineTuneRequest) -> str:
+        """Train a chat model on the prompts and answers, and wait until the job finishes.
+
+        Args:
+            request:
+                The fine-tuning request.
+
+        Returns:
+            The id of the fine-tuned model.
+
+        Raises:
+            TimeoutError:
+                If the job does not finish within `finetune_timeout` seconds. The message names the job, whose model
+                can be used later through the `model` parameter.
+
+            FineTuneError:
+                If OpenAI refuses the job, or the job fails or is cancelled.
+        """
+        lines = [
+            json.dumps({'messages': [*_to_messages(prompt), {'role': 'assistant', 'content': answer}]})
+            for prompt, answer in request.examples
+        ]
+        job = self._start_fine_tuning('\n'.join(lines).encode())
+        deadline = time.monotonic() + self.finetune_timeout
+        while job.status not in FINISHED_STATUSES:
+            if time.monotonic() >= deadline:
+                msg = f'Fine-tuning job {job.id} did not finish within {self.finetune_timeout} seconds.'
+                raise TimeoutError(msg)
+            time.sleep(self.poll_interval)
+            job = self._api.fine_tuning.jobs.retrieve(job.id)
+        if job.status != 'succeeded':
+            msg = f'Fine-tuning job {job.id} ended with status `{job.status}` ({job.error}).'
+            raise FineTuneError(msg)
+        return job.fine_tuned_model

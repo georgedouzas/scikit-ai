@@ -40,14 +40,19 @@ PIPELINES = {
 def transformers(monkeypatch):
     """Install a fake `transformers` module that records every pipeline it creates."""
     calls = {}
+    pipelines = {}
 
     def pipeline(task, model, device):
         """Create a recorded fake pipeline."""
         calls[task, model] = calls.get((task, model), 0) + 1
-        return Recorder(PIPELINES[task])
+        recorder = Recorder(PIPELINES[task])
+        recorder.tokenizer = namespace(get_prompt_ids=lambda text, return_tensors: ('prompt', text))
+        pipelines[task] = recorder
+        return recorder
 
     module = install_module(monkeypatch, 'transformers', pipeline=pipeline)
     module.created = calls
+    module.pipelines = pipelines
     return module
 
 
@@ -138,3 +143,10 @@ def test_transcriber_reads_chunks(transformers, audio):
         {'start': 0.5, 'end': 1.0, 'text': 'there'},
     ]
     assert SpeechTranscriber(backend='hf').fit().predict([audio]).tolist() == ['hi there']
+
+
+def test_transcriber_sends_vocabulary_as_prompt_ids(transformers, audio):
+    """Send the learned vocabulary as Whisper prompt ids."""
+    SpeechTranscriber(backend='hf').fit([audio], ['We run Kubernetes.']).predict([audio])
+    call = transformers.pipelines['automatic-speech-recognition'].calls[-1]
+    assert call['generate_kwargs']['prompt_ids'] == ('prompt', 'Kubernetes')

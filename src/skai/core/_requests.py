@@ -81,11 +81,15 @@ class SummaryRequest:
 
         style:
             A description of the style of the summary.
+
+        examples:
+            Example pairs of a text and its reference summary.
     """
 
     text: str
     max_length: int
     style: str | None = None
+    examples: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -101,11 +105,19 @@ class TranslationRequest:
 
         source_language:
             The language of the text. It is detected when it is `None`.
+
+        examples:
+            Example pairs of a text and its reference translation.
+
+        glossary:
+            Pairs of a term and its required translation.
     """
 
     text: str
     target_language: str
     source_language: str | None = None
+    examples: tuple[tuple[str, str], ...] = ()
+    glossary: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -189,11 +201,15 @@ class DescriptionRequest:
 
         instructions:
             Extra guidance on what to describe.
+
+        examples:
+            Example pairs of a sample and its reference description.
     """
 
     sample: Image.Image | Audio | VideoFrames
     detail: Literal['brief', 'detailed'] = 'brief'
     instructions: str | None = None
+    examples: tuple[tuple[Any, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -209,11 +225,15 @@ class TranscriptionRequest:
 
         timestamps:
             The granularity of the timestamps, or `None` for plain text.
+
+        vocabulary:
+            Domain terms that the speech may contain, given to the model as context for spelling.
     """
 
     audio: Audio
     language: str | None = None
     timestamps: Timestamps = None
+    vocabulary: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -8,7 +8,7 @@
     "voice": "alloy"
   },
   "response": {
-    "bytes": 153644,
+    "bytes": 132044,
     "content_type": "audio/wav"
   },
   "status": 200

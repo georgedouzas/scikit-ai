@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from skai.core import Audio
+from skai.core import Audio, PromptedBackend
 
 
 class Recorder:
@@ -62,3 +62,38 @@ def png_of(size: tuple[int, int]) -> bytes:
 def wav_of(seconds: float) -> bytes:
     """Return the WAV bytes of silence."""
     return Audio(np.zeros(int(16000 * seconds), dtype=np.float32), 16000).to_bytes()
+
+
+class ScriptedBackend(PromptedBackend):
+    """Answer every prompt with a fixed answer and keep the prompts."""
+
+    default_models = dict.fromkeys(
+        ['classify_audio', 'classify_video', 'describe_audio', 'describe_video', 'extract_fields'],
+        'scripted',
+    )
+    accepts_audio = True
+    sends_video_audio = True
+
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        answer: str = '',
+        options: dict | None = None,
+        max_concurrency: int = 1,
+    ) -> None:
+        """Store the fixed answer."""
+        super().__init__(model, options=options, max_concurrency=max_concurrency)
+        self.answer = answer
+
+    def complete(self, prompt: Any, model: str) -> str:
+        """Keep the prompt and return the fixed answer."""
+        self.prompts = [*getattr(self, 'prompts', []), prompt]
+        return self.answer
+
+
+class SilentBackend(ScriptedBackend):
+    """Accept neither audio prompts nor the audio of videos."""
+
+    accepts_audio = False
+    sends_video_audio = False

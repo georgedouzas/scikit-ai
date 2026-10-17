@@ -9,9 +9,20 @@ from typing import ClassVar, Literal
 
 from sklearn.utils._param_validation import InvalidParameterError
 
-from skai.core import Backend, BaseMediaGenerator, ImageGenerationRequest
+from skai.core import (
+    Backend,
+    BaseMediaGenerator,
+    DescriptionRequest,
+    ImageGenerationRequest,
+    UnsupportedBackendError,
+    list_backends,
+    read_image,
+)
 
 SIZE_LENGTH = 2
+STYLE_INSTRUCTIONS = (
+    'Describe only the visual style in one sentence, such as medium, palette and lighting, not the content.'
+)
 
 
 class ImageGenerator(BaseMediaGenerator):
@@ -22,7 +33,10 @@ class ImageGenerator(BaseMediaGenerator):
             The width and height of the images in pixels.
 
         style:
-            A description of the visual style, such as `'watercolor'`.
+            A description of the visual style, such as `'watercolor'`. It takes precedence over a learned style.
+
+        style_images:
+            Reference images whose shared visual style `fit` learns, using the image description task of the backend.
 
         negative_prompt:
             A description of what the images must not show, for backends that support it.
@@ -51,6 +65,9 @@ class ImageGenerator(BaseMediaGenerator):
         backend_ (Backend):
             The resolved backend.
 
+        style_ (str | None):
+            The style learned from `style_images`, or `None` without them.
+
     Examples:
         >>> from skai.generation import ImageGenerator
         >>> generator = ImageGenerator(size=(512, 512), backend='dummy').fit()
@@ -65,6 +82,7 @@ class ImageGenerator(BaseMediaGenerator):
         **BaseMediaGenerator._parameter_constraints,
         'size': [tuple],
         'style': [str, None],
+        'style_images': [list, None],
         'negative_prompt': [str, None],
     }
 
@@ -73,6 +91,7 @@ class ImageGenerator(BaseMediaGenerator):
         *,
         size: tuple[int, int] = (1024, 1024),
         style: str | None = None,
+        style_images: list | None = None,
         negative_prompt: str | None = None,
         output_format: Literal['object', 'bytes', 'path'] = 'object',
         output_dir: str | PathLike | None = None,
@@ -83,6 +102,7 @@ class ImageGenerator(BaseMediaGenerator):
     ) -> None:
         self.size = size
         self.style = style
+        self.style_images = style_images
         self.negative_prompt = negative_prompt
         self.output_format = output_format
         self.output_dir = output_dir
@@ -99,8 +119,28 @@ class ImageGenerator(BaseMediaGenerator):
                 f'Got {self.size}.'
             )
             raise InvalidParameterError(msg)
+        self.style_ = self._learn_style()
+
+    def _learn_style(self) -> str | None:
+        """Describe the shared visual style of the reference images with the backend."""
+        if not self.style_images:
+            return None
+        if 'describe_image' not in type(self.backend_).supported_tasks():
+            backends = list_backends('describe_image')
+            msg = f'{type(self.backend_).__name__} cannot describe images. Backends that can: {backends}.'
+            raise UnsupportedBackendError(msg)
+        requests = [
+            DescriptionRequest(read_image(image, index), instructions=STYLE_INSTRUCTIONS)
+            for index, image in enumerate(self.style_images)
+        ]
+        descriptions = self.backend_.run('describe_image', requests)
+        for description in descriptions:
+            if isinstance(description, Exception):
+                raise description
+        return ' '.join(str(description).strip() for description in descriptions)
 
     def _build_request(self, sample: str, seed: int) -> ImageGenerationRequest:
         """Build the image generation request of one prompt."""
         width, height = self.size
-        return ImageGenerationRequest(sample, (int(width), int(height)), self.style, self.negative_prompt, seed)
+        style = self.style or self.style_
+        return ImageGenerationRequest(sample, (int(width), int(height)), style, self.negative_prompt, seed)

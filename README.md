@@ -96,6 +96,29 @@ with its input type, except generators, which are named for what they generate.
 | `skai.generation` | `ImageGenerator` | generates images from prompts | images |
 | `skai.generation` | `TalkingAvatarGenerator` | animates a portrait so that it speaks the audio | video |
 
+## What fit learns
+
+Every component learns from the data given to `fit`, without training a model unless you ask for fine-tuning.
+
+<!-- --8<-- [start:fit] -->
+| Component | `fit(X, y)` takes | Learns | Uses it as |
+|---|---|---|---|
+| `TextClassifier`, `ImageClassifier` | samples and labels | `classes_`, `examples_` | one example per class by default |
+| `TextSummarizer` | texts and reference summaries | `examples_`, `max_length_` | example pairs and a learned length |
+| `TextTranslator` | texts and reference translations | `examples_`, `glossary_` | example pairs and consistent terms |
+| `ImageDescriptor` | images and reference descriptions | `examples_` | example pairs in the reference style |
+| `SpeechTranscriber` | audio and reference transcripts | `vocabulary_` | domain terms sent as spelling context |
+| `TextEmbedder` | texts | `mean_`, `components_` | centering, and PCA when the backend cannot shorten |
+| `SpeechSynthesizer` | the `voice` parameter | `voice_` | a voice cloned from one or more recordings |
+| `ImageGenerator` | the `style_images` parameter | `style_` | a style learned from reference images |
+| `TalkingAvatarGenerator` | the `avatar` parameter | `avatar_` | the portrait cropped and sized for the backend |
+
+With `adaptation='finetune'`, classifiers, `TextSummarizer`, `TextTranslator` and `ImageDescriptor` train a model on
+all the training data on backends that support fine-tuning, and `fit` raises `UnsupportedBackendError` on the others.
+In a pipeline, intermediate steps are fitted through `fit_transform`, which ignores `y`, so a transcriber in front of a
+classifier never reads the class labels as transcripts.
+<!-- --8<-- [end:fit] -->
+
 ## Usage
 
 Every component is a scikit-learn estimator. The examples use the offline `dummy` backend, so they run without models

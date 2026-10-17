@@ -7,6 +7,8 @@ from os import PathLike
 from pathlib import PurePath
 from typing import Any, ClassVar, Literal
 
+import numpy as np
+
 from skai.core import (
     Audio,
     Backend,
@@ -17,14 +19,32 @@ from skai.core import (
     read_audio,
 )
 
+JOIN_GAP_SECONDS = 0.3
+MAX_VOICE_SECONDS = 30.0
+
+
+def _join_recordings(recordings: list[Audio]) -> Audio:
+    """Join recordings into one mono reference at the first recording's rate, with short gaps, capped in length."""
+    rate = recordings[0].sample_rate
+    gap = np.zeros(round(JOIN_GAP_SECONDS * rate), dtype=np.float32)
+    parts = []
+    for recording in recordings:
+        mono = recording.to_mono()
+        times = np.arange(round(mono.duration * rate)) / rate
+        source_times = np.arange(mono.samples.shape[0]) / mono.sample_rate
+        parts += [np.interp(times, source_times, mono.samples).astype(np.float32), gap]
+    samples = np.concatenate(parts[:-1])[: round(MAX_VOICE_SECONDS * rate)]
+    return Audio(samples, rate)
+
 
 class SpeechSynthesizer(BaseMediaGenerator):
     """Convert every text into spoken audio.
 
     Args:
         voice:
-            A string is a voice name of the backend. Reference audio of a voice to clone, given as an `Audio` object, a
-            `(samples, sample_rate)` tuple, bytes or a `pathlib.Path`, needs a backend that clones voices. The
+            A string is a voice name of the backend. Reference audio of a voice to clone, given as one recording or a
+            list of recordings (`Audio` objects, `(samples, sample_rate)` tuples, bytes or `pathlib.Path`s), needs a
+            backend that clones voices. `fit` joins the recordings into one reference of at most 30 seconds. The
             backend's default voice is used when it is `None`.
 
         language:
@@ -55,7 +75,7 @@ class SpeechSynthesizer(BaseMediaGenerator):
             The resolved backend.
 
         voice_ (str | Audio | None):
-            The voice name, or the reference audio read from `voice`.
+            The voice name, or the reference audio joined from the recordings in `voice`.
 
     Examples:
         >>> from skai.generation import SpeechSynthesizer
@@ -70,14 +90,14 @@ class SpeechSynthesizer(BaseMediaGenerator):
     output_kind: ClassVar[Literal['audio']] = 'audio'
     _parameter_constraints: ClassVar[dict] = {
         **BaseMediaGenerator._parameter_constraints,
-        'voice': [str, bytes, tuple, Audio, PurePath, None],
+        'voice': [str, bytes, tuple, list, Audio, PurePath, None],
         'language': [str, None],
     }
 
     def __init__(
         self,
         *,
-        voice: str | Audio | tuple | bytes | PurePath | None = None,
+        voice: str | Audio | tuple | bytes | PurePath | list | None = None,
         language: str | None = None,
         output_format: Literal['object', 'bytes', 'path'] = 'object',
         output_dir: str | PathLike | None = None,
@@ -100,11 +120,15 @@ class SpeechSynthesizer(BaseMediaGenerator):
         if self.voice is None or isinstance(self.voice, str):
             self.voice_: str | Audio | None = self.voice
             return
+        if isinstance(self.voice, list) and not self.voice:
+            msg = 'The `voice` parameter of SpeechSynthesizer must hold at least one recording.'
+            raise ValueError(msg)
         if not self.backend_.supports_voice_cloning:
             backends = list_backends(self.task, lambda backend_class: backend_class.supports_voice_cloning)
             msg = f'{type(self.backend_).__name__} cannot clone voices. Backends that can: {backends}.'
             raise UnsupportedBackendError(msg)
-        self.voice_ = read_audio(self.voice)
+        recordings = self.voice if isinstance(self.voice, list) else [self.voice]
+        self.voice_ = _join_recordings([read_audio(recording, index) for index, recording in enumerate(recordings)])
 
     def _build_request(self, sample: str, seed: int) -> Any:
         """Build the speech request of one text."""

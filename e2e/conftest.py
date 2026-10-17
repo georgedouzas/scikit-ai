@@ -98,3 +98,9 @@ def shared_images(require_openai_key: None) -> list[Any]:
 def video_enabled() -> bool:
     """Return whether the costly video generation tests were requested."""
     return os.environ.get('SKAI_E2E_VIDEO') == '1'
+
+
+@pytest.fixture(scope='session')
+def finetune_enabled() -> bool:
+    """Return whether the slow and costly fine-tuning tests were requested."""
+    return os.environ.get('SKAI_E2E_FINETUNE') == '1'

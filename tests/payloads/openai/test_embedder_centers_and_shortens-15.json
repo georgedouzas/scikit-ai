@@ -1,0 +1,28 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "dimensions": 8,
+    "encoding_format": "base64",
+    "input": [
+      "TL;DR: New library with books, caf\u00e9 and study rooms."
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": "AKBfvwCAyzwAwKI9AOCWvgBAaj4AgEm9AECIvgDgCD4=",
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 14,
+      "total_tokens": 14
+    }
+  },
+  "status": 200
+}

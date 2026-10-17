@@ -95,6 +95,7 @@ class ReplicateBackend(Backend):
         'clone_voice': 'lucataco/xtts-v2',
     }
     supports_voice_cloning: ClassVar[bool] = True
+    avatar_size: ClassVar[int | None] = 512
 
     def __init__(
         self,

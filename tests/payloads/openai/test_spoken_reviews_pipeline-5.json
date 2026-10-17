@@ -5,7 +5,7 @@
   "response": {
     "text": "This was a complete waste of money.",
     "usage": {
-      "seconds": 3,
+      "seconds": 4,
       "type": "duration"
     }
   },

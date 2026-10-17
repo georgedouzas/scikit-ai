@@ -16,4 +16,4 @@
 
 ## Workflow follow-up
 
-- Archive the change, then delete the emptied `text-components`, `image-components` and `audio-components` specs.
+- Archive the change, which retires the `text-components`, `image-components` and `audio-components` specs.

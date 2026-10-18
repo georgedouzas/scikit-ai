@@ -24,13 +24,17 @@ class VideoFrames:
         timestamps:
             The time of every frame in seconds.
 
+        duration:
+            The length of the video in seconds.
+
         audio:
-            The mono audio track of the video.
+            The mono audio track of the video, or `None` when it has none.
     """
 
     frames: tuple[Image.Image, ...]
     timestamps: tuple[float, ...]
-    audio: Audio
+    duration: float
+    audio: Audio | None = None
 
 
 Sample: TypeAlias = str | Image.Image | Audio | VideoFrames

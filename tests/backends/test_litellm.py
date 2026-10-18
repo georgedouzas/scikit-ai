@@ -90,3 +90,12 @@ def test_image_embeddings_send_data_urls(litellm):
     call = litellm.embedding.calls[-1]
     assert call['model'] == 'cohere/embed-v4.0'
     assert call['input'][0].startswith('data:image/png;base64,')
+
+
+def test_video_audio_can_be_turned_off(litellm, audio):
+    """Leave the audio track out of video requests when `video_audio=False`."""
+    video = Video(np.zeros((10, 4, 4, 3), dtype=np.uint8), fps=5, audio=audio)
+    backend = LiteLLMBackend(model='openai/gpt-5-mini', video_audio=False)
+    VideoClassifier(labels=['cat', 'dog'], n_frames=2, backend=backend).fit().predict([video])
+    types = [part['type'] for part in litellm.completion.calls[-1]['messages'][1]['content']]
+    assert types == ['text', 'image_url', 'image_url']

@@ -1,5 +1,7 @@
 """Test selecting, configuring and registering backends."""
 
+import threading
+
 import numpy as np
 import pytest
 from sklearn.base import clone
@@ -162,3 +164,13 @@ def test_resolve_model_requires_model_without_default():
     with pytest.raises(UnsupportedBackendError, match='Set the `model` parameter'):
         DummyBackend().resolve_model('summarize')
     assert DummyBackend(model='m').resolve_model('summarize') == 'm'
+
+
+def test_clone_shares_objects_in_options():
+    """Copy the options dict but share the live objects inside it."""
+    client = threading.Lock()
+    backend = DummyBackend(options={'client': client, 'temperature': 0})
+    cloned = clone(backend)
+    assert cloned.options == backend.options
+    assert cloned.options is not backend.options
+    assert cloned.options['client'] is client

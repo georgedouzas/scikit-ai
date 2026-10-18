@@ -82,6 +82,23 @@ def openai_backend(request: pytest.FixtureRequest) -> Iterator[OpenAIBackend]:
         yield OpenAIBackend(client=openai.OpenAI(http_client=http_client))
 
 
+@pytest.fixture
+def litellm_backend(request: pytest.FixtureRequest) -> Iterator[Any]:
+    """Return a LiteLLM backend whose OpenAI routes go through a client that records every response."""
+    openai = import_optional('openai', 'openai')
+    from skai.backends import LiteLLMBackend  # noqa: PLC0415 - imported after the credentials are loaded
+
+    hooks = {'response': [Recorder(request.node.name)]}
+    with httpx.Client(event_hooks=hooks, timeout=TIMEOUT) as http_client:
+        yield LiteLLMBackend(options={'client': openai.OpenAI(http_client=http_client)})
+
+
+@pytest.fixture(scope='session')
+def hf_enabled() -> bool:
+    """Return whether the Hugging Face tests, which download models, were requested."""
+    return os.environ.get('SKAI_E2E_HF') == '1'
+
+
 @pytest.fixture(scope='session')
 def shared_images(require_openai_key: None) -> list[Any]:
     """Generate an apple and a car image once for every test that needs them."""

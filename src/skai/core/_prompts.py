@@ -17,12 +17,15 @@ from ._io import to_data_url
 from ._media import Audio
 from ._requests import (
     ClassificationRequest,
-    DescriptionRequest,
     ExtractionRequest,
     ImageGenerationRequest,
-    Sample,
-    SummaryRequest,
-    TranslationRequest,
+    ImageTranscriptionRequest,
+    Moment,
+    MomentRequest,
+    Region,
+    RegionRequest,
+    TextGenerationRequest,
+    ThumbnailRequest,
     VideoFrames,
 )
 
@@ -32,17 +35,15 @@ MULTI_LABEL_SYSTEM = (
     'You are a multi-label classifier. Answer with every label from the list of labels that applies, separated by '
     f'commas, and nothing else. Answer `{NO_LABEL}` if no label applies.'
 )
-SUMMARY_SYSTEM = 'You summarize texts. Answer with the summary only.'
-TRANSLATION_SYSTEM = 'You translate texts. Answer with the translation only.'
-DESCRIPTION_SYSTEM = 'You describe images, audio and videos. Answer with the description only.'
+GENERATION_SYSTEM = 'You follow instructions about the input you are given. Answer with the result only.'
 EXTRACTION_SYSTEM = (
-    'You extract information from texts. Answer with one JSON object whose keys are exactly the requested fields. '
-    'Use null for a field that the text does not contain.'
+    'You extract information from the input. Answer with one JSON object that follows the template exactly, with '
+    'the same keys. Use null for a value that the input does not contain, and an empty list for a list with no items.'
 )
-DETAIL_INSTRUCTIONS = {
-    'brief': 'Describe the {kind} in one sentence.',
-    'detailed': 'Describe the {kind} in one detailed paragraph.',
-}
+TRANSCRIPTION_SYSTEM = 'You transcribe the text written in images exactly, without correcting or summarizing it.'
+DETECTION_SYSTEM = 'You locate regions in images. Answer with one JSON object and nothing else.'
+MOMENT_SYSTEM = 'You find moments in audio and videos. Answer with one JSON object and nothing else.'
+THUMBNAIL_SYSTEM = 'You pick the frame that best represents a video. Answer with the frame number only.'
 CODE_FENCE = re.compile(r'^```(?:json)?\s*|\s*```$')
 
 
@@ -79,38 +80,31 @@ def _normalize(text: str) -> str:
     return text.strip().strip('`"\'').rstrip('.').strip().lower()
 
 
-def _format_input(sample: Sample, images: list[Image.Image], audio: list[Audio], include_audio: bool) -> str:
-    """Format a sample for a prompt, collecting its images and audio."""
+def _format_frames(frames: VideoFrames, images: list[Image.Image], audio: list[Audio], include_audio: bool) -> str:
+    """Format sampled video frames for a prompt, with their audio track when it is included."""
+    references = [_format_input(frame, images, audio, include_audio) for frame in frames.frames]
+    text = f'video frames {" ".join(references)}'
+    if not include_audio or frames.audio is None:
+        return text
+    return f'{text} with audio {_format_input(frames.audio, images, audio, include_audio)}'
+
+
+def _format_input(sample: Any, images: list[Image.Image], audio: list[Audio], include_audio: bool) -> str:
+    """Format a sample for a prompt, collecting its images and audio, with the keys of a multimodal sample."""
     if isinstance(sample, str):
         return sample
+    if isinstance(sample, dict):
+        parts = [f'{key}: {_format_input(value, images, audio, include_audio)}' for key, value in sample.items()]
+        return '\n'.join(parts)
+    if isinstance(sample, list | tuple):
+        return json.dumps(sample, ensure_ascii=False, default=str)
     if isinstance(sample, Audio):
         audio.append(sample)
         return f'<audio {len(audio)}>'
     if isinstance(sample, VideoFrames):
-        references = [_format_input(frame, images, audio, include_audio) for frame in sample.frames]
-        text = f'video frames {" ".join(references)}'
-        if not include_audio or sample.audio is None:
-            return text
-        return f'{text} with audio {_format_input(sample.audio, images, audio, include_audio)}'
+        return _format_frames(sample, images, audio, include_audio)
     images.append(sample)
     return f'<image {len(images)}>'
-
-
-def _format_pairs(pairs: tuple[tuple[str, str], ...], source: str, target: str) -> str:
-    """Format example pairs of texts and their references for a prompt."""
-    if not pairs:
-        return ''
-    examples = '\n\n'.join(f'{source}: {text}\n{target}: {reference}' for text, reference in pairs)
-    return f' Follow the examples.\n\nExamples:\n\n{examples}'
-
-
-def _media_kind(sample: Sample) -> str:
-    """Name the kind of media of a sample."""
-    if isinstance(sample, Audio):
-        return 'audio'
-    if isinstance(sample, VideoFrames):
-        return 'video'
-    return 'image'
 
 
 def _match_label(answer: str, labels: tuple[str, ...]) -> str:
@@ -184,46 +178,48 @@ def parse_labels(answer: str, labels: tuple[str, ...], multi_label: bool) -> dic
     return scores
 
 
-def build_summary_prompt(request: SummaryRequest) -> Prompt:
-    """Build the prompt that asks a model to summarize a text.
+def _template(declaration: Any) -> Any:
+    """Turn a field declaration into the JSON template a model fills in."""
+    if isinstance(declaration, dict):
+        return {name: _template(value) for name, value in declaration.items()}
+    if isinstance(declaration, list):
+        return [_template(declaration[0])] if declaration else []
+    return f'<{declaration}>'
+
+
+def build_extraction_prompt(request: ExtractionRequest, include_audio: bool = True) -> Prompt:
+    """Build the prompt that asks a model to extract fields from a sample as JSON.
 
     Args:
         request:
-            The summary request.
+            The extraction request.
+
+        include_audio:
+            Whether to include the audio track of sampled video frames.
 
     Returns:
-        The prompt.
+        The prompt, which asks for a JSON object.
     """
-    style = f' Write it in this style: {request.style}.' if request.style else ''
-    examples = _format_pairs(request.examples, 'Text', 'Summary')
-    user = f'Summarize the following text in at most {request.max_length} words.{style}{examples}\n\n{request.text}'
-    return Prompt(SUMMARY_SYSTEM, user)
+    images: list[Image.Image] = []
+    audio: list[Audio] = []
+    template = json.dumps({name: _template(declaration) for name, declaration in request.fields}, ensure_ascii=False)
+    examples = ''.join(
+        f'\n\nExample input:\n{_format_input(sample, images, audio, include_audio)}\n'
+        f'Example answer:\n{json.dumps(record, ensure_ascii=False, default=str)}'
+        for sample, record in request.examples
+    )
+    guidance = f'Instructions: {request.instructions}\n\n' if request.instructions else ''
+    sample = _format_input(request.sample, images, audio, include_audio)
+    user = f'{guidance}Template:\n{template}{examples}\n\nInput:\n{sample}'
+    return Prompt(EXTRACTION_SYSTEM, user, tuple(images), tuple(audio), json_output=True)
 
 
-def build_translation_prompt(request: TranslationRequest) -> Prompt:
-    """Build the prompt that asks a model to translate a text.
+def build_text_generation_prompt(request: TextGenerationRequest, include_audio: bool = True) -> Prompt:
+    """Build the prompt that asks a model to produce text from a sample by following instructions.
 
     Args:
         request:
-            The translation request.
-
-    Returns:
-        The prompt.
-    """
-    source = f' from {request.source_language}' if request.source_language else ''
-    glossary = ''.join(f'\n- {term} → {translation}' for term, translation in request.glossary)
-    glossary = f'\n\nTranslate these terms as given:{glossary}' if glossary else ''
-    examples = _format_pairs(request.examples, 'Text', 'Translation')
-    user = f'Translate the following text{source} into {request.target_language}.{glossary}{examples}\n\n{request.text}'
-    return Prompt(TRANSLATION_SYSTEM, user)
-
-
-def build_description_prompt(request: DescriptionRequest, include_audio: bool = True) -> Prompt:
-    """Build the prompt that asks a model to describe an image, audio or sampled video frames.
-
-    Args:
-        request:
-            The description request.
+            The text generation request.
 
         include_audio:
             Whether to include the audio track of sampled video frames.
@@ -233,36 +229,186 @@ def build_description_prompt(request: DescriptionRequest, include_audio: bool = 
     """
     images: list[Image.Image] = []
     audio: list[Audio] = []
-    lines = []
-    for number, (sample, description) in enumerate(request.examples, start=1):
-        example = _format_input(sample, images, audio, include_audio)
-        lines += [f'Example {number}: {example}', f'Description: {description}', '']
-    reference = _format_input(request.sample, images, audio, include_audio)
-    instructions = f' {request.instructions}' if request.instructions else ''
-    detail = DETAIL_INSTRUCTIONS[request.detail].format(kind=_media_kind(request.sample))
-    if request.examples:
-        detail = f'{detail} Follow the style and length of the example descriptions.'
-    user = '\n'.join([*lines, reference, '', f'{detail}{instructions}'])
-    return Prompt(DESCRIPTION_SYSTEM, user, tuple(images), tuple(audio))
+    lines = [f'Instructions: {request.instructions}']
+    if request.max_length is not None:
+        lines.append(f'Use at most {request.max_length} words.')
+    if request.glossary:
+        lines.append('Render these terms as given:')
+        lines += [f'- {term} → {rendering}' for term, rendering in request.glossary]
+    for number, (sample, output) in enumerate(request.examples, start=1):
+        lines += ['', f'Example {number}:', f'Input: {_format_input(sample, images, audio, include_audio)}']
+        lines.append(f'Output: {output}')
+    lines += ['', f'Input: {_format_input(request.sample, images, audio, include_audio)}', 'Output:']
+    return Prompt(GENERATION_SYSTEM, '\n'.join(lines), tuple(images), tuple(audio))
 
 
-def build_extraction_prompt(request: ExtractionRequest) -> Prompt:
-    """Build the prompt that asks a model to extract fields from a text as JSON.
+def build_image_transcription_prompt(request: ImageTranscriptionRequest) -> Prompt:
+    """Build the prompt that asks a vision model to transcribe the text of an image.
 
     Args:
         request:
-            The extraction request.
+            The image transcription request.
+
+    Returns:
+        The prompt.
+    """
+    structure = ', keeping the structure of the page as Markdown headings, lists and tables' if request.markdown else ''
+    user = f'<image 1>\n\nTranscribe all the text exactly as written{structure}. Answer with the transcription only.'
+    return Prompt(TRANSCRIPTION_SYSTEM, user, (request.image,))
+
+
+def build_detection_prompt(request: RegionRequest) -> Prompt:
+    """Build the prompt that asks a vision model for the boxes of the regions to find.
+
+    Args:
+        request:
+            The region request.
 
     Returns:
         The prompt, which asks for a JSON object.
     """
-    fields = '\n'.join(f'- {name}: {description}' for name, description in request.fields)
-    examples = ''.join(
-        f'\n\nExample text:\n{text}\nExample answer:\n{json.dumps(record, ensure_ascii=False)}'
-        for text, record in request.examples
+    width, height = request.image.size
+    target = ', '.join(request.labels) if request.labels else request.prompt
+    user = (
+        f'<image 1>\n\nThe image is {width}x{height} pixels. Find every region showing: {target}. Answer with '
+        '{"regions": [{"label": <label>, "box": [left, top, right, bottom], "score": <0 to 1>}]} in pixels.'
     )
-    user = f'Fields:\n{fields}{examples}\n\nText:\n{request.text}'
-    return Prompt(EXTRACTION_SYSTEM, user, json_output=True)
+    return Prompt(DETECTION_SYSTEM, user, (request.image,), json_output=True)
+
+
+def build_moment_prompt(request: MomentRequest, include_audio: bool = True) -> Prompt:
+    """Build the prompt that asks a model for the moments of audio or a video that match a description.
+
+    Args:
+        request:
+            The moment request.
+
+        include_audio:
+            Whether to include the audio track of sampled video frames.
+
+    Returns:
+        The prompt, which asks for a JSON object.
+    """
+    images: list[Image.Image] = []
+    audio: list[Audio] = []
+    reference = _format_input(request.sample, images, audio, include_audio)
+    if isinstance(request.sample, VideoFrames):
+        times = ', '.join(f'frame {index + 1} at {time:.1f}s' for index, time in enumerate(request.sample.timestamps))
+        reference = f'{reference}\n\nThe video lasts {request.sample.duration:.1f}s, with {times}.'
+    else:
+        reference = f'{reference}\n\nThe audio lasts {request.sample.duration:.1f}s.'
+    user = (
+        f'{reference}\n\nFind every moment that matches: {request.prompt}. Answer with '
+        '{"moments": [{"start": <seconds>, "end": <seconds>, "score": <0 to 1>}]}.'
+    )
+    return Prompt(MOMENT_SYSTEM, user, tuple(images), tuple(audio), json_output=True)
+
+
+def build_thumbnail_prompt(request: ThumbnailRequest) -> Prompt:
+    """Build the prompt that asks a vision model for the frame that best represents a video.
+
+    Args:
+        request:
+            The thumbnail request.
+
+    Returns:
+        The prompt.
+    """
+    images = request.frames.frames
+    references = ' '.join(f'<image {number}>' for number in range(1, len(images) + 1))
+    user = f'{references}\n\nWhich frame, from 1 to {len(images)}, best represents the video? Answer with its number.'
+    return Prompt(THUMBNAIL_SYSTEM, user, tuple(images))
+
+
+def _load_json(answer: str) -> Any:
+    """Read the JSON object of an answer, without a Markdown code fence."""
+    try:
+        return json.loads(CODE_FENCE.sub('', answer.strip()))
+    except json.JSONDecodeError as error:
+        msg = f'The answer `{answer}` is not valid JSON ({error.msg}).'
+        raise InvalidResponseError(msg) from error
+
+
+def parse_regions(answer: str, size: tuple[int, int]) -> list[Region]:
+    """Read the regions of a detection answer, clamping their boxes to the image.
+
+    Args:
+        answer:
+            The answer of the model.
+
+        size:
+            The width and height of the image.
+
+    Returns:
+        The regions.
+
+    Raises:
+        InvalidResponseError:
+            If the answer is not a JSON object with a list of regions.
+    """
+    data = _load_json(answer)
+    if not isinstance(data, dict) or not isinstance(data.get('regions'), list):
+        msg = f'The answer `{answer}` has no list of regions.'
+        raise InvalidResponseError(msg)
+    width, height = size
+    regions = []
+    for item in data['regions']:
+        left, top, right, bottom = (round(float(value)) for value in item['box'])
+        box = (max(0, left), max(0, top), min(width, right), min(height, bottom))
+        regions.append(Region(str(item.get('label', '')), float(item.get('score', 1.0)), box))
+    return regions
+
+
+def parse_moments(answer: str, duration: float) -> list[Moment]:
+    """Read the moments of an answer, clamping them to the length of the media.
+
+    Args:
+        answer:
+            The answer of the model.
+
+        duration:
+            The length of the media in seconds.
+
+    Returns:
+        The moments, in time order.
+
+    Raises:
+        InvalidResponseError:
+            If the answer is not a JSON object with a list of moments.
+    """
+    data = _load_json(answer)
+    if not isinstance(data, dict) or not isinstance(data.get('moments'), list):
+        msg = f'The answer `{answer}` has no list of moments.'
+        raise InvalidResponseError(msg)
+    moments = [
+        Moment(max(0.0, float(item['start'])), min(duration, float(item['end'])), float(item.get('score', 1.0)))
+        for item in data['moments']
+    ]
+    return sorted((moment for moment in moments if moment.end > moment.start), key=lambda moment: moment.start)
+
+
+def parse_frame_number(answer: str, count: int) -> int:
+    """Read the frame number of an answer as a zero-based index.
+
+    Args:
+        answer:
+            The answer of the model.
+
+        count:
+            The number of frames.
+
+    Returns:
+        The index of the frame.
+
+    Raises:
+        InvalidResponseError:
+            If the answer names no frame between 1 and `count`.
+    """
+    match = re.search(r'\d+', answer)
+    if match is None or not 1 <= int(match.group()) <= count:
+        msg = f'The answer `{answer}` names no frame between 1 and {count}.'
+        raise InvalidResponseError(msg)
+    return int(match.group()) - 1
 
 
 def parse_fields(answer: str, names: tuple[str, ...]) -> dict[str, Any]:
@@ -282,11 +428,7 @@ def parse_fields(answer: str, names: tuple[str, ...]) -> dict[str, Any]:
         InvalidResponseError:
             If the answer is not a JSON object.
     """
-    try:
-        data = json.loads(CODE_FENCE.sub('', answer.strip()))
-    except json.JSONDecodeError as error:
-        msg = f'The answer `{answer}` is not valid JSON ({error.msg}).'
-        raise InvalidResponseError(msg) from error
+    data = _load_json(answer)
     if not isinstance(data, dict):
         msg = f'The answer `{answer}` is not a JSON object.'
         raise InvalidResponseError(msg)
@@ -341,10 +483,7 @@ def to_chat_messages(prompt: Prompt) -> list[dict[str, Any]]:
     return [{'role': 'system', 'content': prompt.system}, {'role': 'user', 'content': content}]
 
 
-def build_task_prompt(
-    task: str,
-    request: ClassificationRequest | SummaryRequest | TranslationRequest | DescriptionRequest | ExtractionRequest,
-) -> Prompt:
+def build_task_prompt(task: str, request: ClassificationRequest | TextGenerationRequest | ExtractionRequest) -> Prompt:
     """Build the prompt that a prompted backend sends for a task and a request.
 
     Args:
@@ -366,11 +505,8 @@ def build_task_prompt(
         'classify_image': build_classification_prompt,
         'classify_audio': build_classification_prompt,
         'classify_video': build_classification_prompt,
-        'summarize': build_summary_prompt,
-        'translate': build_translation_prompt,
-        'describe_image': build_description_prompt,
-        'describe_audio': build_description_prompt,
-        'describe_video': build_description_prompt,
+        'classify_multimodal': build_classification_prompt,
+        'generate_text': build_text_generation_prompt,
         'extract_fields': build_extraction_prompt,
     }
     if task not in builders:

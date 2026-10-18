@@ -10,21 +10,23 @@ import skai
 import skai.backends
 import skai.classification
 import skai.core
-import skai.description
 import skai.embedding
+import skai.extraction
 import skai.generation
-import skai.text
-import skai.transcription
+import skai.pipeline
+import skai.presets
+import skai.recipes
+import skai.segmentation
 
 COMPONENT_MODULES = [
     skai.classification,
-    skai.description,
-    skai.transcription,
-    skai.text,
+    skai.extraction,
     skai.embedding,
+    skai.segmentation,
     skai.generation,
+    skai.pipeline,
 ]
-MODULES = [skai, skai.backends, skai.core, *COMPONENT_MODULES]
+MODULES = [skai, skai.backends, skai.core, skai.presets, skai.recipes, *COMPONENT_MODULES]
 README = Path(__file__).parents[1] / 'README.md'
 
 
@@ -48,10 +50,16 @@ def test_docstring_examples_run(test):
 
 
 def test_every_public_component_has_an_example():
-    """Give every public component and the dummy backend a runnable example."""
+    """Give every public component, primitive and the dummy backend a runnable example."""
     names = {test.name for test in find_examples()}
     components = [f'{module.__name__}.{name}' for module in COMPONENT_MODULES for name in module.__all__]
     assert {*components, 'skai.backends.DummyBackend'} <= names
+
+
+def test_presets_and_recipes_have_module_examples():
+    """Give the presets and recipes modules a runnable example."""
+    names = {test.name for test in find_examples()}
+    assert {'skai.presets', 'skai.recipes'} <= names
 
 
 def test_readme_examples_run():

@@ -39,10 +39,11 @@ wording of `instructions`.
 | `TextToImageGenerator` | `generate_image` |
 | `ImageToImageGenerator` | `edit_image`, `upscale_image`, `remove_background`, local `collage` |
 | `VideoToImageGenerator` | `pick_thumbnail`, local `frame` |
+| `MultimodalToImageGenerator` | `edit_image` with per-sample `instructions` and `mask` |
 | `TextToAudioGenerator` | `synthesize_speech`, `generate_music`, `generate_sound` |
 | `AudioToAudioGenerator` | `separate_audio`, `enhance_audio`, `convert_voice`, local `concatenate` |
 | `VideoToAudioGenerator` | local `extract` |
-| `MultimodalToAudioGenerator` | local `mix` |
+| `MultimodalToAudioGenerator` | local `mix`, `synthesize_speech` with a per-sample `voice` |
 | `TextToVideoGenerator` | `generate_video` |
 | `ImageToVideoGenerator` | `animate_image` |
 | `AudioToVideoGenerator` | `animate_avatar` |
@@ -71,11 +72,23 @@ dicts instead of concatenated columns. `Field` is a stateless transformer. `ForE
 runs the inner estimator once on the flat list (one batch to the backend), and splits the outputs back by the original
 lengths. `TopK` scores items with a callable or with a fitted classifier's `predict_proba` column.
 
+### Per-sample parameters are multimodal keys
+A parameter that changes per sample, such as the voice of every speaker turn or the edit text of every image, is a
+key of a multimodal sample, never a constructor parameter. `MultimodalToAudioGenerator(operation='speech')` speaks
+`text` in `voice`, and `MultimodalToImageGenerator(operation='edit')` edits `image` with `instructions` inside an
+optional `mask`, so recipes build those samples with `MediaUnion` and `Field`.
+
+### Retrieval
+`Retriever` is the one primitive with a query method. `fit` runs the item pipeline on the samples, flattens list
+outputs with their sample index, and indexes their vectors. `kneighbors` embeds queries with the query pipeline and
+returns the records of the nearest items, so a text query finds the shots of a video library.
+
 ### Local operations
 Concatenation, mixing, muxing, subtitles, collages, frames and audio extraction are deterministic media operations on
 `Video`, `Audio` and PIL images, with PyAV and Pillow from the `video` extra and no backend. Mixing ducks tracks with a
-smoothed RMS envelope of the voice track. Shot cuts use the histogram distance between consecutive frames, silence an
-RMS threshold, and text splitting paragraphs, sentences or fixed-size chunks.
+smoothed RMS envelope of the voice track, and a track can be a list of timed records placed at their `start`. Shot
+cuts use the histogram distance between consecutive frames, silence an RMS threshold, and text splitting paragraphs,
+sentences or fixed-size chunks.
 
 ### Presets and recipes are functions
 `skai.presets.summarizer(max_length=50, **kwargs)` returns
@@ -91,8 +104,18 @@ most 0.2 code uses, and the migration page maps every removed name to its replac
 Defaults are verified one operation at a time with the end-to-end suite, as in `add-roadmap-components`. OpenAI covers
 `generate_text`, `extract_fields`, `transcribe_image` and `detect_objects` (vision prompts), `edit_image`, speech and
 Sora. Hugging Face covers `segment_image` (SAM-class models), `detect_objects` (OWL-ViT), `diarize` (pyannote),
-`separate_audio` (Demucs), `enhance_audio`, `upscale_image` (Swin2SR), `remove_background` (RMBG), `generate_music`
-(MusicGen) and `lip_sync`. Replicate is added back only for operations whose model inputs are confirmed by a real run.
+`separate_audio` (Demucs), `enhance_audio`, `upscale_image` (Swin2SR), `remove_background` (RMBG) and
+`generate_music` (MusicGen). Replicate is added back only for operations whose model inputs are confirmed by a real run.
+
+### Providers of the operations without a transformers pipeline
+- Background removal uses `briaai/RMBG-1.4`, which loads only with `trust_remote_code=True`. The backend pins the
+  model revision to a commit hash, so the code that runs is fixed, and a different revision must be set explicitly.
+- Lip sync and voice conversion run open-source models hosted on Replicate. A component declares a default backend
+  per operation, so `MultimodalToVideoGenerator(operation='lip_sync')` defaults to Replicate while `mux` and
+  `subtitle` stay local.
+- Diarization uses `pyannote/speaker-diarization-3.1` from a new `diarize` extra, with the Hugging Face token read
+  from the environment variable named by `token_env`, and speaker turns get their text from Whisper.
+- Audio enhancement on the Hugging Face backend is spectral-gating noise reduction with NumPy, with no model.
 
 ## Risks / Trade-offs
 
@@ -100,4 +123,5 @@ Sora. Hugging Face covers `segment_image` (SAM-class models), `detect_objects` (
 - [Forty classes look like many] → They form one grid, so names can be guessed, and the docs open with the grid and a table of tasks with their configuration.
 - [Records and lists in object arrays are opaque to `set_output('pandas')`] → `Extractor.transform` keeps returning columns, and the docs show `Pick` to get a field.
 - [Local media assembly needs PyAV, and long videos use much memory] → The local operations require the `video` extra at `fit` with a clear error, and the docs state the memory limit of the first version.
+- [Pinned remote code of RMBG still runs downloaded code] → The revision is pinned and documented, and no other model loads remote code.
 - [Many new operations depend on models that are hard to run here] → Each operation is implemented only with a provider whose API is known, verified end to end where possible, and listed as open in tasks otherwise.

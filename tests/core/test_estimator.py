@@ -15,43 +15,48 @@ from sklearn.utils._param_validation import InvalidParameterError
 from skai.backends import DummyBackend
 from skai.classification import ImageClassifier, TextClassifier
 from skai.core import SampleError, SampleFailureWarning
-from skai.description import ImageDescriptor
 from skai.embedding import TextEmbedder
-from skai.generation import ImageGenerator, SpeechSynthesizer, TalkingAvatarGenerator
-from skai.text import TextSummarizer, TextTranslator
-from skai.transcription import SpeechTranscriber
+from skai.generation import (
+    AudioToTextGenerator,
+    AudioToVideoGenerator,
+    ImageToTextGenerator,
+    TextToAudioGenerator,
+    TextToImageGenerator,
+    TextToTextGenerator,
+)
 
 AVATAR = Image.new('RGB', (8, 8))
 COMPONENTS = [
     TextClassifier(labels=['a', 'b'], backend='dummy', batch_size=3),
-    TextSummarizer(max_length=5, backend='dummy'),
-    TextTranslator(target_language='German', backend='dummy'),
+    TextToTextGenerator(instructions='Summarize the text.', max_length=5, backend='dummy'),
+    TextToTextGenerator(instructions='Translate into German.', learn_terms=True, backend='dummy'),
     TextEmbedder(dimensions=4, backend='dummy'),
-    SpeechSynthesizer(voice='alloy', backend='dummy'),
-    ImageGenerator(size=(8, 8), backend='dummy'),
-    ImageDescriptor(detail='detailed', backend='dummy'),
+    TextToAudioGenerator(voice='alloy', backend='dummy'),
+    TextToImageGenerator(size=(8, 8), backend='dummy'),
+    ImageToTextGenerator(instructions='Describe the image in detail.', backend='dummy'),
     ImageClassifier(labels=['cat', 'dog'], backend='dummy'),
-    SpeechTranscriber(timestamps='segment', backend='dummy'),
-    TalkingAvatarGenerator(avatar=AVATAR, backend='dummy'),
+    AudioToTextGenerator(language='en', backend='dummy'),
+    AudioToVideoGenerator(avatar=AVATAR, backend='dummy'),
 ]
 GENERATORS = [
-    (TextSummarizer(backend='dummy'), ['a b c']),
-    (TextTranslator(target_language='German', backend='dummy'), ['hello']),
-    (ImageDescriptor(backend='dummy'), [AVATAR]),
-    (SpeechTranscriber(backend='dummy'), [(np.zeros(800), 16000)]),
+    (TextToTextGenerator(instructions='Summarize the text.', backend='dummy'), ['a b c']),
+    (TextToTextGenerator(instructions='Translate into German.', learn_terms=True, backend='dummy'), ['hello']),
+    (ImageToTextGenerator(instructions='Describe the image.', backend='dummy'), [AVATAR]),
+    (AudioToTextGenerator(backend='dummy'), [(np.zeros(800), 16000)]),
 ]
+SUMMARIZE = 'Summarize the text.'
 TEXTS = [f'text number {index}' for index in range(10)]
 
 
 class FlakyBackend(DummyBackend):
     """Fail on texts that contain the word fail."""
 
-    def summarize(self, request):
-        """Fail or summarize like the dummy backend."""
-        if 'fail' in request.text:
+    def generate_text(self, request):
+        """Fail or generate like the dummy backend."""
+        if 'fail' in request.sample:
             msg = 'provider error'
             raise RuntimeError(msg)
-        return super().summarize(request)
+        return super().generate_text(request)
 
     def classify_text(self, request):
         """Fail or classify like the dummy backend."""
@@ -98,7 +103,7 @@ def test_constructor_takes_keyword_parameters_only(component):
 
 def test_invalid_parameter_is_reported_at_fit():
     """Accept any value at construction and report invalid ones at `fit`."""
-    summarizer = TextSummarizer(batch_size=0, backend='dummy')
+    summarizer = TextToTextGenerator(instructions=SUMMARIZE, batch_size=0, backend='dummy')
     with pytest.raises(InvalidParameterError, match='batch_size'):
         summarizer.fit()
 
@@ -106,6 +111,7 @@ def test_invalid_parameter_is_reported_at_fit():
 @pytest.mark.parametrize(('component', 'X'), GENERATORS)
 def test_stateless_fit_ignores_data(component, X):
     """Return the component from `fit` with or without data."""
+    component = clone(component)
     assert component.fit() is component
     assert component.fit(X, ['ignored'] * len(X)) is component
     assert len(component.predict(X)) == len(X)
@@ -114,14 +120,14 @@ def test_stateless_fit_ignores_data(component, X):
 @pytest.mark.parametrize(('component', 'X'), GENERATORS)
 def test_predict_equals_transform(component, X):
     """Return identical results from `predict` and `transform`."""
-    component.fit()
+    component = clone(component).fit()
     np.testing.assert_array_equal(component.predict(X), component.transform(X))
 
 
 def test_converter_feeds_classifier_in_pipeline():
     """Feed the transcripts of the transcriber to the classifier in a pipeline."""
     audio = [(np.zeros(size), 16000) for size in (1600, 3200, 4800, 6400)]
-    pipeline = make_pipeline(SpeechTranscriber(backend='dummy'), TextClassifier(backend='dummy'))
+    pipeline = make_pipeline(AudioToTextGenerator(backend='dummy'), TextClassifier(backend='dummy'))
     predictions = pipeline.fit(audio, ['x', 'y', 'x', 'y']).predict(audio)
     assert predictions.shape == (4,)
     assert set(predictions) <= {'x', 'y'}
@@ -219,13 +225,14 @@ def test_embedder_finds_dimensions_and_names_features():
 
 def test_batched_outputs_keep_input_order():
     """Return output `i` for input `i` with batches and concurrency."""
-    summarizer = TextSummarizer(max_length=3, batch_size=3, backend=DummyBackend(max_concurrency=4)).fit()
+    backend = DummyBackend(max_concurrency=4)
+    summarizer = TextToTextGenerator(instructions=SUMMARIZE, max_length=3, batch_size=3, backend=backend).fit()
     assert summarizer.predict(TEXTS).tolist() == TEXTS
 
 
 def test_ignored_failures_are_reported_in_one_warning():
     """Return `None` for failed samples and name each of them in one warning."""
-    summarizer = TextSummarizer(backend=FlakyBackend(), on_error='ignore').fit()
+    summarizer = TextToTextGenerator(instructions=SUMMARIZE, backend=FlakyBackend(), on_error='ignore').fit()
     with pytest.warns(SampleFailureWarning, match=r'2 samples failed.*sample 1: provider error; sample 2'):
         summaries = summarizer.predict(['fine', 'fail', 'fail again'])
     assert summaries.tolist() == ['fine', None, None]
@@ -234,7 +241,7 @@ def test_ignored_failures_are_reported_in_one_warning():
 def test_raised_failure_names_sample_index():
     """Raise `SampleError` naming the failed sample when `on_error='raise'`."""
     with pytest.raises(SampleError, match='Sample 1 failed: provider error'):
-        TextSummarizer(backend=FlakyBackend()).fit().predict(['fine', 'fail'])
+        TextToTextGenerator(instructions=SUMMARIZE, backend=FlakyBackend()).fit().predict(['fine', 'fail'])
 
 
 def test_classifier_marks_failed_samples():
@@ -280,13 +287,13 @@ def test_random_state_controls_seeds():
     """Send the same seeds for the same `random_state`."""
     SeedRecordingBackend.seeds.clear()
     for _ in range(2):
-        ImageGenerator(size=(4, 4), random_state=0, backend=SeedRecordingBackend()).fit().predict(['a cat'])
+        TextToImageGenerator(size=(4, 4), random_state=0, backend=SeedRecordingBackend()).fit().predict(['a cat'])
     assert SeedRecordingBackend.seeds[0] == SeedRecordingBackend.seeds[1]
 
 
 def test_tags_declare_input_kind():
     """Declare string input for text components and non-deterministic outputs for all."""
-    assert TextSummarizer().__sklearn_tags__().input_tags.string
-    assert not ImageDescriptor().__sklearn_tags__().input_tags.string
-    assert ImageDescriptor().__sklearn_tags__().non_deterministic
+    assert TextToTextGenerator().__sklearn_tags__().input_tags.string
+    assert not ImageToTextGenerator().__sklearn_tags__().input_tags.string
+    assert ImageToTextGenerator().__sklearn_tags__().non_deterministic
     assert TextClassifier().__sklearn_tags__().classifier_tags.multi_label

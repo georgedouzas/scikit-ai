@@ -60,7 +60,7 @@ class TextEmbedder(BaseEmbedder):
         (2, 4)
     """
 
-    task: ClassVar[str] = 'embed_text'
+    operations: ClassVar[dict[str, str | None]] = {'embed': 'embed_text'}
     input_kind: ClassVar[Literal['text']] = 'text'
 
     def __init__(

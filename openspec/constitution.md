@@ -212,20 +212,26 @@ project takes shape.
   parameters, validate them in `fit` through `_parameter_constraints`, expose learned state with a trailing
   underscore, and implement `predict`, `predict_proba` or `transform`. Backends are scikit-learn estimators too, so
   their parameters can be tuned as nested parameters.
-- Scope: task-oriented components whose primary input is text, an image, audio or video, in six task families:
-  classification, description, transcription, text, embedding and generation. Every component learns from the data
-  given to `fit`, and components chain in scikit-learn pipelines. Reinforcement learning, agents, chat APIs and
-  tabular data are out of scope.
+- Scope: components whose input is text, an image, audio, a video or a multimodal sample of named media, in a fixed
+  grid named by input and output: analyzers `{Input}{Role}` with the roles classifier, extractor, embedder and
+  segmenter, and generators `{Input}To{Output}Generator`. A class name fixes its input and output, `operation`
+  selects the model family or procedure, and `instructions` the content. Every component learns from the data given
+  to `fit`, and components chain in scikit-learn pipelines with the primitives of `skai.pipeline`. Reinforcement
+  learning, agents, chat APIs and tabular data are out of scope.
 - Default models: every component and every provider-only backend string has a documented default model. This is a
   deliberate exception to the rule that the choice of model stays with the caller, so the components follow the
   scikit-learn practice of useful defaults. The caller can always override the model with `backend`.
-- Delivery surfaces: the task-family packages `skai.classification`, `skai.description`, `skai.transcription`,
-  `skai.text`, `skai.embedding` and `skai.generation`, plus `skai.backends` and `skai.core`. Component names start
-  with their input type, except generators, which are named for their output. The shared leaves live in `skai.core`,
-  and imports run from `skai.core` to `skai.backends` to the task-family packages.
+- Delivery surfaces: the role packages `skai.classification`, `skai.extraction`, `skai.embedding`,
+  `skai.segmentation` and `skai.generation`, the primitives in `skai.pipeline`, the configured components in
+  `skai.presets` and the configured pipelines in `skai.recipes`, plus `skai.backends` and `skai.core`. The shared
+  leaves and the local media operations live in `skai.core`, and imports run from `skai.core` to `skai.backends` to
+  the role packages, then to `skai.pipeline`, `skai.presets` and `skai.recipes`.
 - Language: Python >=3.11, <3.14.
 - Dependencies: `scikit-learn`, `numpy`, `pillow`, `soundfile` and `httpx` are required. Providers and video codecs are
-  optional extras: `openai`, `hf`, `litellm`, `replicate`, `video` and `all`.
+  optional extras: `openai`, `hf` (with `torchaudio`), `litellm`, `replicate`, `diarize` (`pyannote.audio`), `video`
+  and `all`.
+- Remote code: no model loads code from its repository, except `briaai/RMBG-1.4` for background removal, which loads
+  with `trust_remote_code=True` at a pinned revision.
 - Credentials: backends take the name of the environment variable that holds a secret, such as `api_key_env`, and
   read it when the client is created.
 - Build and tooling: PDM with SCM-derived versioning and a `src` layout. The `nox` sessions are `formatting`,
@@ -236,4 +242,4 @@ project takes shape.
   tested against fake clients and modules.
 - Layout: library. The importable package under `src/skai` is distributed to others.
 
-**Version**: 1.1.2 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-17
+**Version**: 1.1.3 | **Ratified**: 2024-01-01 | **Last Amended**: 2026-10-18

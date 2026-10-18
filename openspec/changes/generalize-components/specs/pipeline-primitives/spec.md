@@ -30,7 +30,7 @@ The library SHALL provide `ForEach` in `skai.pipeline`, which applies an estimat
 
 #### Scenario: Every scene
 - **WHEN** `ForEach(make_pipeline(Field('visual'), TextToImageGenerator(size=(64, 64))))` transforms two storyboards of three and two scenes
-- **THEN** it returns lists of three and two images, and the backend receives one batch of five requests
+- **THEN** it returns lists of three and two images, and the inner pipeline transforms all five scenes in one call, which the generator splits only by its `batch_size`
 
 #### Scenario: Empty lists
 - **WHEN** a sample is an empty list
@@ -42,3 +42,10 @@ The library SHALL provide `TopK` in `skai.pipeline`, which keeps the `k` items o
 #### Scenario: Best moments
 - **WHEN** `TopK(VideoClassifier(labels=['exciting', 'calm']), label='exciting', k=2)` transforms a list of five clips
 - **THEN** it returns the two clips with the highest `exciting` probability, in their original order
+
+### Requirement: Retriever
+The library SHALL provide `Retriever` in `skai.pipeline`, which indexes the items of samples with an item pipeline and answers queries with a query pipeline. `fit` SHALL run the item pipeline, which returns one vector or one list of records with vectors per sample, and `kneighbors(queries, n_neighbors)` SHALL return, for every query, the records of the nearest items with their `sample` index.
+
+#### Scenario: Shots found by text
+- **WHEN** a `Retriever` whose item pipeline embeds the shots of videos and whose query pipeline is a `TextEmbedder` is fitted on two videos
+- **THEN** `kneighbors(['a goal'], n_neighbors=2)` returns two records per query, each with `sample`, `start` and `end`

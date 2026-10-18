@@ -68,7 +68,17 @@ class ScriptedBackend(PromptedBackend):
     """Answer every prompt with a fixed answer and keep the prompts."""
 
     default_models = dict.fromkeys(
-        ['classify_audio', 'classify_video', 'describe_audio', 'describe_video', 'extract_fields'],
+        [
+            'classify_audio',
+            'classify_video',
+            'classify_multimodal',
+            'generate_text',
+            'extract_fields',
+            'transcribe_image',
+            'detect_objects',
+            'find_moments',
+            'pick_thumbnail',
+        ],
         'scripted',
     )
     accepts_audio = True

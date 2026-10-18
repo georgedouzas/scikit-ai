@@ -23,7 +23,7 @@ The library SHALL provide `skai.presets`, functions that return a component conf
 - **THEN** it behaves exactly like the component it returns
 
 ### Requirement: Pipeline recipes
-The library SHALL provide `skai.recipes`, functions that return a configured `Pipeline` for every recipe of the `pipelines` capability. Every recipe SHALL take a `backend` passed to every step that uses one, and keyword arguments for its main choices.
+The library SHALL provide `skai.recipes`, functions that return a configured `Pipeline` for every recipe of the `pipelines` capability. Every recipe SHALL take a `backend` passed to every step that uses one, and keyword arguments for its main choices. `video_search` returns a `Retriever` instead.
 
 #### Scenario: Recipe returns a pipeline
 - **WHEN** `skai.recipes.explainer_video(backend='dummy')` is called

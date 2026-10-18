@@ -86,8 +86,9 @@ def _to_segments(response: Any, timestamps: str | None) -> tuple[Segment, ...]:
 class OpenAIBackend(PromptedBackend):
     """Run component tasks on the OpenAI API.
 
-    The backend supports text and image classification, summarization, translation, embeddings, speech synthesis,
-    image generation, image description and transcription. It needs the `openai` extra.
+    The backend prompts chat, vision and audio models for classification, text generation, extraction, image
+    transcription, object detection, moments and thumbnails, and runs embeddings, speech, transcription, image
+    generation and editing, and Sora videos. It needs the `openai` extra.
 
     Args:
         model:
@@ -126,24 +127,29 @@ class OpenAIBackend(PromptedBackend):
 
     default_models: ClassVar[dict[str, str]] = {
         'classify_text': CHAT_MODEL,
-        'summarize': CHAT_MODEL,
-        'translate': CHAT_MODEL,
-        'describe_image': CHAT_MODEL,
+        'generate_text': CHAT_MODEL,
+        'generate_text:audio': AUDIO_MODEL,
+        'classify_multimodal': CHAT_MODEL,
+        'transcribe_image': CHAT_MODEL,
+        'detect_objects': CHAT_MODEL,
+        'find_moments': CHAT_MODEL,
+        'find_moments:audio': AUDIO_MODEL,
+        'pick_thumbnail': CHAT_MODEL,
+        'extract_fields:audio': AUDIO_MODEL,
         'classify_image': CHAT_MODEL,
         'embed_text': 'text-embedding-3-small',
         'synthesize_speech': 'gpt-4o-mini-tts',
         'generate_image': 'gpt-image-1',
         'transcribe': 'whisper-1',
         'classify_audio': AUDIO_MODEL,
-        'describe_audio': AUDIO_MODEL,
         'classify_video': CHAT_MODEL,
-        'describe_video': CHAT_MODEL,
         'extract_fields': CHAT_MODEL,
         'edit_image': 'gpt-image-1',
         'generate_video': VIDEO_MODEL,
         'animate_image': VIDEO_MODEL,
     }
     supports_masks: ClassVar[bool] = True
+    supports_reference_images: ClassVar[bool] = True
     accepts_audio: ClassVar[bool] = True
     timestamp_granularities: ClassVar[frozenset[str]] = frozenset({'segment', 'word'})
     accepts_context: ClassVar[bool] = True
@@ -255,7 +261,9 @@ class OpenAIBackend(PromptedBackend):
         return Audio.from_bytes(response.content)
 
     def generate_image(self, request: ImageGenerationRequest) -> Image.Image:
-        """Generate an image with an image model.
+        """Generate an image with an image model, from the reference images of a subject when the request has them.
+
+        Reference images go to the image edit endpoint, which keeps their subject in the new image.
 
         Args:
             request:
@@ -265,13 +273,16 @@ class OpenAIBackend(PromptedBackend):
             The image.
         """
         width, height = request.size
-        response = self._api.images.generate(
-            model=self.resolve_model('generate_image'),
-            prompt=build_image_prompt(request),
-            size=f'{width}x{height}',
-            n=1,
-            **self.call_options,
-        )
+        options = {'model': self.resolve_model('generate_image'), 'prompt': build_image_prompt(request), 'n': 1}
+        options |= {'size': f'{width}x{height}', **self.call_options}
+        if request.reference_images:
+            references = [
+                _to_png_file(image.convert('RGB'), f'reference-{index}.png')
+                for index, image in enumerate(request.reference_images)
+            ]
+            response = self._api.images.edit(image=references, **options)
+        else:
+            response = self._api.images.generate(**options)
         image = Image.open(io.BytesIO(base64.b64decode(response.data[0].b64_json)))
         image.load()
         return image

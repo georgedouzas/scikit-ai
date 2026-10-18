@@ -4,13 +4,12 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from skai import presets
 from skai.classification import AudioClassifier, ImageClassifier, TextClassifier
 from skai.core import Audio
-from skai.description import ImageDescriptor
 from skai.embedding import AudioEmbedder, ImageEmbedder, TextEmbedder
-from skai.generation import ImageGenerator, SpeechSynthesizer
-from skai.text import TextExtractor, TextSummarizer, TextTranslator
-from skai.transcription import SpeechTranscriber
+from skai.extraction import TextExtractor
+from skai.generation import AudioToTextGenerator, ImageToTextGenerator, TextToAudioGenerator, TextToImageGenerator
 
 GREEK = 'Ͱ-Ͽ'
 
@@ -58,9 +57,9 @@ def test_text_and_image_embeddings(red_image):
 
 def test_speech_round_trip():
     """Speak a sentence with MMS-TTS and transcribe it with Whisper."""
-    speech = SpeechSynthesizer(backend='hf').fit().predict(['The weather is nice today.'])
+    speech = TextToAudioGenerator(backend='hf').fit().predict(['The weather is nice today.'])
     assert isinstance(speech[0], Audio)
-    transcript = SpeechTranscriber(language='en', backend='hf').fit().predict(speech)[0].lower()
+    transcript = AudioToTextGenerator(language='en', backend='hf').fit().predict(speech)[0].lower()
     assert 'weather' in transcript
 
 
@@ -75,15 +74,16 @@ def test_audio_classification_and_embeddings():
 
 def test_image_description(red_image):
     """Describe the red disc with SmolVLM."""
-    description = ImageDescriptor(backend='hf').fit().predict([red_image])[0].lower()
+    descriptor = ImageToTextGenerator(instructions='Describe the image in one sentence.', backend='hf')
+    description = descriptor.fit().predict([red_image])[0].lower()
     assert 'red' in description
 
 
 def test_prompted_text_tasks():
     """Summarize, translate and extract with Qwen2.5-1.5B."""
     article = 'The city opened a new library with ten thousand books and free study rooms for students.'
-    assert 'library' in TextSummarizer(max_length=20, backend='hf').fit().predict([article])[0].lower()
-    translation = TextTranslator(target_language='Greek', backend='hf').fit().predict(['Good morning, friend.'])[0]
+    assert 'library' in presets.summarizer(max_length=20, backend='hf').fit().predict([article])[0].lower()
+    translation = presets.translator('Greek', backend='hf').fit().predict(['Good morning, friend.'])[0]
     assert any('Ͱ' <= character <= 'Ͽ' for character in translation)
     record = TextExtractor(fields={'name': 'person name', 'city': 'city'}, backend='hf').fit()
     assert 'Ada' in str(record.predict(['Ada lives in London.'])[0]['name'])
@@ -91,5 +91,5 @@ def test_prompted_text_tasks():
 
 def test_image_generation():
     """Generate an image of the requested size with SD-Turbo."""
-    image = ImageGenerator(size=(512, 512), random_state=0, backend='hf').fit().predict(['a red apple'])[0]
+    image = TextToImageGenerator(size=(512, 512), random_state=0, backend='hf').fit().predict(['a red apple'])[0]
     assert image.size == (512, 512)

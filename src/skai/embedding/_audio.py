@@ -57,7 +57,7 @@ class AudioEmbedder(BaseEmbedder):
         (3, 4)
     """
 
-    task: ClassVar[str] = 'embed_audio'
+    operations: ClassVar[dict[str, str | None]] = {'embed': 'embed_audio'}
     input_kind: ClassVar[Literal['audio']] = 'audio'
 
     def __init__(

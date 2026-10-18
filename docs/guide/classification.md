@@ -1,6 +1,7 @@
 # Classification
 
-`skai.classification` holds the components that assign labels. They predict zero-shot from `labels`, or few-shot from
+`skai.classification` holds the components that assign labels: `TextClassifier`, `ImageClassifier`,
+`AudioClassifier`, `VideoClassifier` and `MultimodalClassifier`. They predict zero-shot from `labels`, or few-shot from
 training samples and targets, and pass `k_shot` training samples to the backend as examples. `labels` can be a dict
 that maps every label to a description, and `instructions` adds guidance. Targets can be labels or a binary indicator
 matrix for multilabel classification. Targets outside `labels` raise `ValueError`.
@@ -43,6 +44,24 @@ audio = [(np.zeros(16000, dtype=np.float32), 16000)]
 print(AudioClassifier(labels=['dog bark', 'siren'], backend='dummy').fit().predict(audio))
 video = Video(np.zeros((20, 8, 8, 3), dtype=np.uint8), fps=10)
 print(VideoClassifier(labels=['cooking', 'sports'], n_frames=4, backend='dummy').fit().predict([video]))
+```
+
+## Multimodal samples
+
+`MultimodalClassifier` labels samples made of several named parts, such as a photo and its caption, and sends every
+part to the backend in one request, each named by its key. Samples are dicts or the rows of a DataFrame.
+
+```python exec="true" source="above" result="text"
+from PIL import Image
+from skai.classification import MultimodalClassifier
+
+posts = [{'image': Image.new('RGB', (32, 32), 'red'), 'caption': 'Fresh tomatoes for sale.'}]
+classifier = MultimodalClassifier(
+    labels=['safe', 'unsafe'],
+    instructions='Judge the image and the caption together.',
+    backend='dummy',
+)
+print(classifier.fit().predict(posts))
 ```
 
 ## What fit learns

@@ -11,10 +11,12 @@ from PIL import Image
 
 from skai.core import (
     Audio,
+    AudioOperationRequest,
     AvatarRequest,
     Backend,
     ImageGenerationRequest,
     InvalidResponseError,
+    LipSyncRequest,
     SpeechRequest,
     Video,
     build_image_prompt,
@@ -23,6 +25,11 @@ from skai.core import (
     read_env,
 )
 
+# The inputs of the lip sync and voice conversion models were taken from their API pages,
+# https://replicate.com/bytedance/latentsync/api and https://replicate.com/jagilley/free-vc/api, and are not yet
+# verified by a real run.
+LIP_SYNC_MODEL = 'bytedance/latentsync:637ce1919f807ca20da3a448ddc2743535d2853649574cd52a933120e9b9e293'
+VOICE_CONVERSION_MODEL = 'jagilley/free-vc:e4f2ff8a1d3779a2411e119dfad7d451d5f3314a8cd7003a88f88ce4c3b18d95'
 DOWNLOAD_TIMEOUT = 300.0
 DEFAULT_VOICE = 'af_bella'
 ASPECT_RATIOS = ('1:1', '16:9', '21:9', '3:2', '2:3', '4:5', '5:4', '3:4', '4:3', '9:16', '9:21')
@@ -65,7 +72,7 @@ def _read_output(output: Any) -> bytes:
 
 
 class ReplicateBackend(Backend):
-    """Run talking avatars, image generation and speech synthesis on models hosted by Replicate.
+    """Run talking avatars, lip sync, image generation, speech synthesis and voice conversion on Replicate models.
 
     The default models are open-source. A model is named `owner/name` or `owner/name:version`, and a version should be
     pinned for reproducible results. Inputs are sent under the names the default models use, and `options` adds or
@@ -93,6 +100,8 @@ class ReplicateBackend(Backend):
         'generate_image': 'black-forest-labs/flux-schnell',
         'synthesize_speech': 'jaaari/kokoro-82m',
         'clone_voice': 'lucataco/xtts-v2',
+        'lip_sync': LIP_SYNC_MODEL,
+        'convert_voice': VOICE_CONVERSION_MODEL,
     }
     supports_voice_cloning: ClassVar[bool] = True
     avatar_size: ClassVar[int | None] = 512
@@ -188,3 +197,37 @@ class ReplicateBackend(Backend):
             'driven_audio': _to_file(request.audio.to_bytes(), 'audio.wav'),
         }
         return Video(data=self._run_model(self.resolve_model('animate_avatar'), inputs))
+
+    def lip_sync(self, request: LipSyncRequest) -> Video:
+        """Make a video speak new audio with a lip sync model.
+
+        Args:
+            request:
+                The lip sync request.
+
+        Returns:
+            The video.
+        """
+        inputs: dict[str, Any] = {
+            'video': _to_file(request.video.to_bytes(), 'video.mp4'),
+            'audio': _to_file(request.audio.to_bytes(), 'audio.wav'),
+        }
+        inputs |= {'seed': request.seed} if request.seed is not None else {}
+        return Video(data=self._run_model(self.resolve_model('lip_sync'), inputs))
+
+    def convert_voice(self, request: AudioOperationRequest) -> Audio:
+        """Say the speech of audio in the voice of the reference audio with a voice conversion model.
+
+        Args:
+            request:
+                The audio operation request, whose `voice` holds the reference audio.
+
+        Returns:
+            The converted speech.
+        """
+        assert request.voice is not None
+        inputs = {
+            'source_audio': _to_file(request.audio.to_bytes(), 'source.wav'),
+            'reference_audio': _to_file(request.voice.to_bytes(), 'reference.wav'),
+        }
+        return Audio.from_bytes(self._run_model(self.resolve_model('convert_voice'), inputs))

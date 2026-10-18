@@ -26,11 +26,15 @@ The library SHALL provide `TextSegmenter`, `ImageSegmenter`, `AudioSegmenter` an
 - **THEN** every region has a `mask` of the photo's size
 
 ### Requirement: Audio regions
-`AudioSegmenter` regions SHALL carry `start` and `end` in seconds. `by='speech'` (the default) SHALL return timed speech with `text`, `by='speaker'` SHALL return speaker turns with `speaker` and `text`, `by='silence'` SHALL return the parts between silences, and `by='moment'` SHALL return the parts matching `prompt`.
+`AudioSegmenter` regions SHALL carry `start` and `end` in seconds. `by='speech'` (the default) SHALL return timed speech with `text`, `by='word'` timed words with `text`, `by='speaker'` SHALL return speaker turns with `speaker` and `text`, `by='silence'` SHALL return the parts between silences, and `by='moment'` SHALL return the parts matching `prompt`.
 
 #### Scenario: Speaker turns
 - **WHEN** `AudioSegmenter(by='speaker', backend='dummy')` predicts on a recording
 - **THEN** every region has `start <= end`, a `speaker` label and `text`
+
+#### Scenario: Timed words
+- **WHEN** `AudioSegmenter(by='word', backend='dummy')` predicts on a recording
+- **THEN** every region holds one word in `text`, in time order
 
 #### Scenario: Timed speech with a vocabulary
 - **WHEN** `AudioSegmenter(by='speech')` is fitted with reference transcripts as `y`

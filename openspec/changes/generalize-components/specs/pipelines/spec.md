@@ -21,7 +21,7 @@ Every embedder SHALL work as the first step before any scikit-learn estimator th
 - **THEN** it returns one video with an audio track and subtitles
 
 ### Requirement: Recipe: articles to podcast
-`podcast` SHALL turn articles into one audio episode: summaries, a two-host script, speech in two voices joined in order, and generated intro music mixed in.
+`podcast` SHALL turn articles into one audio episode: summaries, a two-host script, every line spoken in the voice of its host, joined in order, and generated intro music mixed in.
 
 #### Scenario: Runs on the dummy backend
 - **WHEN** `skai.recipes.podcast(backend='dummy').fit(None).predict([article])` is called
@@ -35,7 +35,7 @@ Every embedder SHALL work as the first step before any scikit-learn estimator th
 - **THEN** it returns one video whose height is 16/9 of its width
 
 ### Requirement: Recipe: story to read-along video
-`read_along` SHALL turn a story into a video whose characters look the same on every page, with one set of reference images for every generated image and word-timed subtitles.
+`read_along` SHALL turn a story into a video whose characters, described by `characters`, look the same on every page, with one set of reference images learned in `fit` for every generated image and word-timed subtitles.
 
 #### Scenario: Runs on the dummy backend
 - **WHEN** `skai.recipes.read_along(backend='dummy').fit(None).predict([story])` is called
@@ -84,21 +84,21 @@ Every embedder SHALL work as the first step before any scikit-learn estimator th
 - **THEN** it returns one anomaly label per scan
 
 ### Requirement: Recipe: searching a video library by text
-`video_search` SHALL index the shots of a video library and return, for every text query, the closest shots.
+`video_search` SHALL return a `Retriever` that indexes the shots of a video library and returns, for every text query, the closest shots.
 
 #### Scenario: Runs on the dummy backend
-- **WHEN** `skai.recipes.video_search(backend='dummy').fit(videos)` is queried with `kneighbors_texts(['a goal'], n_neighbors=2)`
-- **THEN** it returns two shot records per query, each with its video index, `start` and `end`
+- **WHEN** `skai.recipes.video_search(backend='dummy').fit(videos)` is queried with `kneighbors(['a goal'], n_neighbors=2)`
+- **THEN** it returns two shot records per query, each with its video index as `sample`, `start` and `end`
 
 ### Requirement: Recipe: multimodal moderation
-`moderation` SHALL classify posts given as multimodal samples of an image and a caption, combining safety labels of both into one calibrated classifier trained on labeled posts.
+`moderation` SHALL classify posts given as multimodal samples of an image and a caption, judging both in one request, with probabilities calibrated by cross-validation on labeled posts.
 
 #### Scenario: Runs on the dummy backend
 - **WHEN** `skai.recipes.moderation(backend='dummy').fit(posts, labels).predict_proba(posts)` is called
 - **THEN** it returns one probability row per post
 
 ### Requirement: Recipe: audio description track
-`audio_description` SHALL add a spoken description of every shot to a video, placed in the pauses of the dialogue, plus subtitles of the dialogue.
+`audio_description` SHALL add a spoken description of every shot to a video, placed at the start of the shot, with the dialogue lowered while it plays, plus subtitles of the dialogue.
 
 #### Scenario: Runs on the dummy backend
 - **WHEN** `skai.recipes.audio_description(backend='dummy').fit(None).predict([video])` is called

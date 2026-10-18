@@ -7,9 +7,9 @@ from PIL import Image
 from skai.backends import LiteLLMBackend
 from skai.classification import AudioClassifier, TextClassifier, VideoClassifier
 from skai.core import MissingCredentialError, Video
-from skai.description import ImageDescriptor
 from skai.embedding import ImageEmbedder, TextEmbedder
-from skai.text import TextExtractor, TextSummarizer
+from skai.extraction import TextExtractor
+from skai.generation import ImageToTextGenerator, TextToTextGenerator
 from tests.fakes import Recorder, chat_response, install_module, namespace, round_trip
 
 
@@ -28,7 +28,8 @@ def test_prompted_tasks_call_completion(litellm):
     """Send prompts with images to the default chat model."""
     assert TextClassifier(labels=['cat', 'dog'], backend='litellm').fit().predict(['meow']).tolist() == ['cat']
     assert litellm.completion.calls[-1]['model'] == 'anthropic/claude-haiku-5-5'
-    ImageDescriptor(backend='litellm:gemini/gemini-2.5-flash').fit().predict([Image.new('RGB', (4, 4))])
+    descriptor = ImageToTextGenerator(instructions='Describe the image.', backend='litellm:gemini/gemini-2.5-flash')
+    descriptor.fit().predict([Image.new('RGB', (4, 4))])
     call = litellm.completion.calls[-1]
     assert call['model'] == 'gemini/gemini-2.5-flash'
     assert call['messages'][1]['content'][1]['type'] == 'image_url'
@@ -46,7 +47,7 @@ def test_named_credential_and_base_are_passed(litellm, monkeypatch):
     """Pass the key read from `api_key_env` and the base URL to every call."""
     monkeypatch.setenv('MY_KEY', 'secret')
     backend = LiteLLMBackend(model='ollama/llama3.2', api_key_env='MY_KEY', api_base='http://localhost:11434')
-    TextSummarizer(backend=backend).fit().predict(['text'])
+    TextToTextGenerator(instructions='Summarize the text.', backend=backend).fit().predict(['text'])
     call = litellm.completion.calls[-1]
     assert (call['api_key'], call['api_base']) == ('secret', 'http://localhost:11434')
 
@@ -55,12 +56,12 @@ def test_missing_named_credential_fails_at_fit(litellm, monkeypatch):
     """Fail at `fit` when the named credential variable is not set."""
     monkeypatch.delenv('MY_KEY', raising=False)
     with pytest.raises(MissingCredentialError, match='MY_KEY'):
-        TextSummarizer(backend=LiteLLMBackend(api_key_env='MY_KEY')).fit()
+        TextToTextGenerator(instructions='Summarize the text.', backend=LiteLLMBackend(api_key_env='MY_KEY')).fit()
 
 
 def test_unpickled_backend_imports_module_again(litellm):
     """Import LiteLLM again on first use after unpickling."""
-    summarizer = round_trip(TextSummarizer(backend='litellm').fit())
+    summarizer = round_trip(TextToTextGenerator(instructions='Summarize the text.', backend='litellm').fit())
     assert summarizer.predict(['text'])[0] == 'cat'
 
 

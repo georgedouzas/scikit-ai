@@ -60,7 +60,7 @@ class ImageEmbedder(BaseEmbedder):
         (3, 4)
     """
 
-    task: ClassVar[str] = 'embed_image'
+    operations: ClassVar[dict[str, str | None]] = {'embed': 'embed_image'}
     input_kind: ClassVar[Literal['image']] = 'image'
 
     def __init__(

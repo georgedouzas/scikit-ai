@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import numpy as np
 import pytest
 from dotenv import load_dotenv
 
@@ -18,6 +19,7 @@ ROOT = Path(__file__).parents[1]
 PAYLOADS = ROOT / 'tests' / 'payloads' / 'openai'
 MAX_STRING = 500
 TIMEOUT = 300.0
+SHOT_FRAMES = 12
 
 load_dotenv(ROOT / '.env', override=False)
 
@@ -103,24 +105,48 @@ def hf_enabled() -> bool:
 def shared_images(require_openai_key: None) -> list[Any]:
     """Generate an apple and a car image once for every test that needs them."""
     openai = import_optional('openai', 'openai')
-    from skai.generation import ImageGenerator  # noqa: PLC0415 - imported after the credentials are loaded
+    from skai.generation import TextToImageGenerator  # noqa: PLC0415 - imported after the credentials are loaded
 
     with httpx.Client(event_hooks={'response': [Recorder('shared-images')]}, timeout=TIMEOUT) as http_client:
         backend = OpenAIBackend(client=openai.OpenAI(http_client=http_client))
         prompts = ['A single red apple on a white table', 'A small blue car parked on an empty street']
-        return list(ImageGenerator(size=(1024, 1024), backend=backend).fit().predict(prompts))
+        return list(TextToImageGenerator(size=(1024, 1024), backend=backend).fit().predict(prompts))
 
 
 @pytest.fixture(scope='session')
 def shared_speech(require_openai_key: None) -> Any:
     """Synthesize one sentence of speech once for every test that needs it."""
     openai = import_optional('openai', 'openai')
-    from skai.generation import SpeechSynthesizer  # noqa: PLC0415 - imported after the credentials are loaded
+    from skai.generation import TextToAudioGenerator  # noqa: PLC0415 - imported after the credentials are loaded
 
     with httpx.Client(event_hooks={'response': [Recorder('shared-speech')]}, timeout=TIMEOUT) as http_client:
         backend = OpenAIBackend(client=openai.OpenAI(http_client=http_client))
         sentence = 'Good morning, the apple harvest starts today.'
-        return SpeechSynthesizer(backend=backend).fit().predict([sentence])[0]
+        return TextToAudioGenerator(backend=backend).fit().predict([sentence])[0]
+
+
+def _frames_of(image: Any, count: int, side: int = 320) -> np.ndarray:
+    """Return `count` copies of an image as square RGB frames."""
+    frame = np.asarray(image.convert('RGB').resize((side, side)))
+    return np.repeat(frame[np.newaxis], count, axis=0)
+
+
+@pytest.fixture(scope='session')
+def apple_video(shared_images: list[Any], shared_speech: Any) -> Any:
+    """Build, without a provider, a video of the generated apple that speaks the synthesized sentence."""
+    from skai.core import Video  # noqa: PLC0415 - imported after the credentials are loaded
+
+    return Video(_frames_of(shared_images[0], 25), fps=25 / shared_speech.duration, audio=shared_speech)
+
+
+@pytest.fixture(scope='session')
+def scenes_video(shared_images: list[Any], shared_speech: Any) -> Any:
+    """Build, without a provider, a video of an apple shot then a car shot that speaks the synthesized sentence."""
+    from skai.core import Video  # noqa: PLC0415 - imported after the credentials are loaded
+
+    apple, car = shared_images
+    frames = np.concatenate([_frames_of(apple, SHOT_FRAMES), _frames_of(car, SHOT_FRAMES)])
+    return Video(frames, fps=2 * SHOT_FRAMES / shared_speech.duration, audio=shared_speech)
 
 
 @pytest.fixture(scope='session')

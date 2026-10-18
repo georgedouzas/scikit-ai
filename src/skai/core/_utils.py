@@ -8,9 +8,29 @@ import os
 from numbers import Integral
 from types import ModuleType
 
+import numpy as np
+from sklearn.utils import check_random_state
 from sklearn.utils._param_validation import InvalidParameterError
 
 from ._errors import MissingCredentialError, MissingExtraError
+
+MAX_SEED = 2**31 - 1
+
+
+def draw_seeds(random_state: int | np.random.RandomState | None, count: int) -> list[int]:
+    """Draw the seeds that components send to backends.
+
+    Args:
+        random_state:
+            The `random_state` parameter of the component.
+
+        count:
+            The number of seeds.
+
+    Returns:
+        The seeds, reproducible for an integer `random_state`.
+    """
+    return [int(seed) for seed in check_random_state(random_state).randint(0, MAX_SEED, size=count)]
 
 
 def import_optional(module: str, extra: str) -> ModuleType:

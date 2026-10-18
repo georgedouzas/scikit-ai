@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Components grouped by task family
-Every public component SHALL be importable from exactly one module named after its role: classifiers from `skai.classification`, extractors from `skai.extraction`, embedders from `skai.embedding`, segmenters from `skai.segmentation`, generators from `skai.generation`, and `MediaUnion`, `Field`, `ForEach` and `TopK` from `skai.pipeline`.
+Every public component SHALL be importable from exactly one module named after its role: classifiers from `skai.classification`, extractors from `skai.extraction`, embedders from `skai.embedding`, segmenters from `skai.segmentation`, generators from `skai.generation`, and `MediaUnion`, `Field`, `ForEach`, `TopK` and `Retriever` from `skai.pipeline`.
 
 #### Scenario: Import by task family
 - **WHEN** a user imports `TextClassifier` from `skai.classification`, `VideoExtractor` from `skai.extraction`, `AudioEmbedder` from `skai.embedding`, `AudioSegmenter` from `skai.segmentation`, `VideoToTextGenerator` from `skai.generation` and `ForEach` from `skai.pipeline`

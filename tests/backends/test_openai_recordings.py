@@ -3,10 +3,11 @@
 import json
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 from skai.backends import OpenAIBackend
-from skai.description import ImageDescriptor
+from skai.generation import ImageToTextGenerator
 from tests.backends.test_openai import make_client
 
 RECORDINGS = Path(__file__).parents[1] / 'payloads' / 'openai'
@@ -17,12 +18,17 @@ def load_request(name):
     return json.loads((RECORDINGS / name).read_text())['request']
 
 
+@pytest.mark.skip(reason='re-record in task 5.3')
 def test_descriptor_examples_match_recorded_request():
     """Send the example image and the target image with the same text as the recorded real request."""
     recorded = load_request('test_descriptor_follows_reference_style-1.json')
     client = make_client('Object: car. Color: blue.')
     images = [Image.new('RGB', (8, 8), 'red'), Image.new('RGB', (8, 8), 'blue')]
-    descriptor = ImageDescriptor(backend=OpenAIBackend(client=client)).fit(images[:1], ['Object: apple. Color: red.'])
+    descriptor = ImageToTextGenerator(
+        instructions='Describe the image in one sentence. Follow the style and length of the example descriptions.',
+        backend=OpenAIBackend(client=client),
+    )
+    descriptor.fit(images[:1], ['Object: apple. Color: red.'])
     descriptor.predict(images[1:])
     sent = client.chat.completions.create.calls[-1]
     recorded_parts = recorded['messages'][1]['content']

@@ -24,8 +24,8 @@ into one.
 | `skai.extraction` | `TextExtractor`, `ImageExtractor`, `AudioExtractor`, `VideoExtractor`, `MultimodalExtractor` |
 | `skai.embedding` | `TextEmbedder`, `ImageEmbedder`, `AudioEmbedder`, `VideoEmbedder` |
 | `skai.segmentation` | `TextSegmenter`, `ImageSegmenter`, `AudioSegmenter`, `VideoSegmenter` |
-| `skai.generation` | `TextToTextGenerator`, `ImageToTextGenerator`, `AudioToTextGenerator`, `VideoToTextGenerator`, `MultimodalToTextGenerator`, `TextToImageGenerator`, `ImageToImageGenerator`, `VideoToImageGenerator`, `TextToAudioGenerator`, `AudioToAudioGenerator`, `VideoToAudioGenerator`, `MultimodalToAudioGenerator`, `TextToVideoGenerator`, `ImageToVideoGenerator`, `AudioToVideoGenerator`, `VideoToVideoGenerator`, `MultimodalToVideoGenerator` |
-| `skai.pipeline` | `MediaUnion`, `Field`, `ForEach`, `TopK` |
+| `skai.generation` | `TextToTextGenerator`, `ImageToTextGenerator`, `AudioToTextGenerator`, `VideoToTextGenerator`, `MultimodalToTextGenerator`, `TextToImageGenerator`, `ImageToImageGenerator`, `VideoToImageGenerator`, `MultimodalToImageGenerator`, `TextToAudioGenerator`, `AudioToAudioGenerator`, `VideoToAudioGenerator`, `MultimodalToAudioGenerator`, `TextToVideoGenerator`, `ImageToVideoGenerator`, `AudioToVideoGenerator`, `VideoToVideoGenerator`, `MultimodalToVideoGenerator` |
+| `skai.pipeline` | `MediaUnion`, `Field`, `ForEach`, `TopK`, `Retriever` |
 
 - Add multimodal samples (dicts or DataFrame rows of named media) and list-valued samples, built by `MediaUnion` and
   the segmenters and consumed by `ForEach`, `TopK` and the joining operations.
@@ -46,13 +46,13 @@ into one.
 - `text-generation`: the five text generators, with the instruct and transcribe operations.
 - `extraction`: the five extractors, with nested and list fields.
 - `segmentation`: the four segmenters, with regions in space and time.
-- `pipeline-primitives`: `MediaUnion`, `Field`, `ForEach` and `TopK`.
+- `pipeline-primitives`: `MediaUnion`, `Field`, `ForEach`, `TopK` and `Retriever`.
 - `presets`: `skai.presets` and `skai.recipes`.
 
 ### Modified Capabilities
 - `classification`: adds `MultimodalClassifier`.
 - `embedding`: adds `VideoEmbedder`.
-- `generation`: the twelve media generators and their operations.
+- `generation`: the thirteen media generators and their operations.
 - `pipelines`: 16 recipes replace the chain-specific requirements.
 - `module-layout`, `media-estimator-api`, `media-io`, `backends`: the naming grid, multimodal and list-valued samples,
   and backend coverage per operation.

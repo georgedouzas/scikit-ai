@@ -191,6 +191,9 @@ class Video:
         data:
             The MP4-encoded video.
 
+        subtitles:
+            Subtitles in SRT format, written next to the video by `save`.
+
     Raises:
         ValueError:
             If neither `frames` with `fps` nor `data` are given.
@@ -210,6 +213,7 @@ class Video:
         audio: Audio | None = None,
         *,
         data: bytes | None = None,
+        subtitles: str | None = None,
     ) -> None:
         if data is None and (frames is None or fps is None):
             msg = 'Provide either `frames` and `fps`, or the encoded `data`.'
@@ -218,6 +222,7 @@ class Video:
         self._fps = fps
         self._audio = audio
         self._data = data
+        self.subtitles = subtitles
 
     def __repr__(self) -> str:
         """Return a short description of the video."""
@@ -309,15 +314,17 @@ class Video:
         return self._data
 
     def save(self, path: str | Path) -> Path:
-        """Write the video to an MP4 file.
+        """Write the video to an MP4 file, and its subtitles to an SRT file of the same name when it has them.
 
         Args:
             path:
                 The path of the file to write.
 
         Returns:
-            The path of the written file.
+            The path of the written video file.
         """
         path = Path(path)
         path.write_bytes(self.to_bytes())
+        if self.subtitles is not None:
+            path.with_suffix('.srt').write_text(self.subtitles, encoding='utf-8')
         return path

@@ -48,11 +48,12 @@
 
 ## Introduction
 
-scikit-ai provides task-oriented components for text, images, audio and video. Each component does one job, such as
-describing an image, summarizing a text, transcribing speech or making a portrait speak, and follows the
-[scikit-learn](https://scikit-learn.org/stable) estimator API. The same component runs on open-source models or on cloud
-APIs, chosen with one `backend` parameter, and fits into `Pipeline`, `GridSearchCV` and the rest of the scikit-learn
-ecosystem.
+scikit-ai provides components for text, images, audio, video and multimodal samples that follow the
+[scikit-learn](https://scikit-learn.org/stable) estimator API. Components are named by their input and output, such
+as `ImageClassifier`, `AudioSegmenter` or `TextToVideoGenerator`, so the name says what every sample is and what every
+output is. The same component runs on open-source models or on cloud APIs, chosen with one `backend` parameter, and
+fits into `Pipeline`, `GridSearchCV` and the rest of the scikit-learn ecosystem. Presets and recipes configure the
+components and pipelines of common tasks, from a summary to a video dubbed in the original voice.
 
 ## Installation
 
@@ -65,7 +66,8 @@ pip install "scikit-ai[hf]"        # local open-source models with Hugging Face
 pip install "scikit-ai[openai]"    # the OpenAI API
 pip install "scikit-ai[litellm]"   # Anthropic, Gemini, Mistral, Bedrock, Ollama and others through LiteLLM
 pip install "scikit-ai[replicate]" # open-source models hosted by Replicate
-pip install "scikit-ai[video]"     # encoding and decoding video
+pip install "scikit-ai[diarize]"   # speaker diarization with pyannote
+pip install "scikit-ai[video]"     # encoding, decoding and assembling video
 pip install "scikit-ai[all]"       # everything
 ```
 
@@ -80,23 +82,25 @@ pdm install
 
 ## Components
 
-Components live in modules named after their task family, like scikit-learn's estimators. Every class name starts
-with its input type, except generators, which are named for what they generate.
+Components live in modules named after their role, like scikit-learn's estimators. Analyzers are named
+`{Input}{Role}` and generators `{Input}To{Output}Generator`, where the input is `Text`, `Image`, `Audio`, `Video` or
+`Multimodal`, a dict of named parts.
 
-| Module | Component | Does | Output |
+| Module | Components | Does | Output |
 |---|---|---|---|
-| `skai.classification` | `TextClassifier`, `ImageClassifier`, `AudioClassifier`, `VideoClassifier` | assign labels, zero-shot or few-shot | labels and probabilities |
-| `skai.description` | `ImageDescriptor`, `AudioDescriptor`, `VideoDescriptor` | describe media in natural language | text |
-| `skai.transcription` | `SpeechTranscriber`, `VideoTranscriber` | transcribe speech, optionally with timestamps | text or timed records |
-| `skai.text` | `TextSummarizer` | summarizes texts | text |
-| `skai.text` | `TextTranslator` | translates texts | text |
-| `skai.text` | `TextExtractor` | extracts named fields | records or columns |
-| `skai.embedding` | `TextEmbedder`, `ImageEmbedder`, `AudioEmbedder` | map samples to vectors | float array |
-| `skai.generation` | `SpeechSynthesizer` | speaks texts, optionally in a cloned voice | audio |
-| `skai.generation` | `ImageGenerator`, `VideoGenerator` | generate images or videos from prompts | images or videos |
-| `skai.generation` | `ImageEditor` | applies an instruction to images | images |
-| `skai.generation` | `ImageAnimator` | turns images into short videos | videos |
-| `skai.generation` | `TalkingAvatarGenerator` | animates a portrait so that it speaks the audio | video |
+| `skai.classification` | `TextClassifier`, `ImageClassifier`, `AudioClassifier`, `VideoClassifier`, `MultimodalClassifier` | assign labels, zero-shot or few-shot | labels and probabilities |
+| `skai.extraction` | `TextExtractor`, `ImageExtractor`, `AudioExtractor`, `VideoExtractor`, `MultimodalExtractor` | extract declared fields, nested records and lists | records or columns |
+| `skai.embedding` | `TextEmbedder`, `ImageEmbedder`, `AudioEmbedder`, `VideoEmbedder` | map samples to vectors | float array |
+| `skai.segmentation` | `TextSegmenter`, `ImageSegmenter`, `AudioSegmenter`, `VideoSegmenter` | split samples into regions in space or time | lists of regions |
+| `skai.generation` | `TextToTextGenerator`, `ImageToTextGenerator`, `AudioToTextGenerator`, `VideoToTextGenerator`, `MultimodalToTextGenerator` | follow instructions, or transcribe speech and written text | text |
+| `skai.generation` | `TextToImageGenerator`, `ImageToImageGenerator`, `VideoToImageGenerator`, `MultimodalToImageGenerator` | generate, edit, upscale, cut out, lay out and pick images | images |
+| `skai.generation` | `TextToAudioGenerator`, `AudioToAudioGenerator`, `VideoToAudioGenerator`, `MultimodalToAudioGenerator` | speak, compose, separate, enhance, convert, join and mix audio | audio |
+| `skai.generation` | `TextToVideoGenerator`, `ImageToVideoGenerator`, `AudioToVideoGenerator`, `VideoToVideoGenerator`, `MultimodalToVideoGenerator` | generate, animate, reframe, join, lip-sync, mux and subtitle video | videos |
+| `skai.pipeline` | `MediaUnion`, `Field`, `ForEach`, `TopK`, `Retriever` | combine branches, pick fields, work on every item, keep the best, search | samples |
+| `skai.presets`, `skai.recipes` | functions such as `summarizer` or `explainer_video` | configure components and pipelines for common tasks | estimators |
+
+`operation` selects the procedure of a component, such as `'transcribe'` or `'upscale'`, and `instructions` holds the
+prompt of the components that follow one, such as `'Summarize the text.'`.
 
 ## What fit learns
 
@@ -105,19 +109,19 @@ Every component learns from the data given to `fit`, without training a model un
 <!-- --8<-- [start:fit] -->
 | Component | `fit(X, y)` takes | Learns | Uses it as |
 |---|---|---|---|
-| `TextClassifier`, `ImageClassifier` | samples and labels | `classes_`, `examples_` | one example per class by default |
-| `TextSummarizer` | texts and reference summaries | `examples_`, `max_length_` | example pairs and a learned length |
-| `TextTranslator` | texts and reference translations | `examples_`, `glossary_` | example pairs and consistent terms |
-| `ImageDescriptor` | images and reference descriptions | `examples_` | example pairs in the reference style |
-| `SpeechTranscriber` | audio and reference transcripts | `vocabulary_` | domain terms sent as spelling context |
-| `TextEmbedder` | texts | `mean_`, `components_` | centering, and PCA when the backend cannot shorten |
-| `SpeechSynthesizer` | the `voice` parameter | `voice_` | a voice cloned from one or more recordings |
-| `ImageGenerator` | the `style_images` parameter | `style_` | a style learned from reference images |
-| `TalkingAvatarGenerator` | the `avatar` parameter | `avatar_` | the portrait cropped and sized for the backend |
+| classifiers | samples and labels | `classes_`, `examples_` | one example per class by default |
+| extractors | samples and reference records | `examples_` | example pairs |
+| text generators with `operation='instruct'` | samples and reference texts | `examples_`, `max_length_` | example pairs and, with `max_length='auto'`, a learned length |
+| `TextToTextGenerator(learn_terms=True)` | texts and reference texts | `glossary_` | consistent terms |
+| text generators with `operation='transcribe'`, `AudioSegmenter` | audio or video and reference transcripts | `vocabulary_` | domain terms sent as spelling context |
+| embedders | samples | `mean_`, `components_` | centering, and PCA when the backend cannot shorten |
+| `TextToAudioGenerator`, `AudioToAudioGenerator` | the `voice` parameter | `voice_` | a voice cloned from one or more recordings |
+| `TextToImageGenerator` | the `style_images` and `reference_prompt` parameters | `style_`, `reference_images_` | a learned style and a consistent subject |
+| `AudioToVideoGenerator` | the `avatar` parameter | `avatar_` | the portrait cropped and sized for the backend |
 
-With `adaptation='finetune'`, classifiers, `TextSummarizer`, `TextTranslator` and `ImageDescriptor` train a model on
-all the training data on backends that support fine-tuning, and `fit` raises `UnsupportedBackendError` on the others.
-In a pipeline, intermediate steps are fitted through `fit_transform`, which ignores `y`, so a transcriber in front of a
+With `adaptation='finetune'`, classifiers and text generators with `operation='instruct'` train a model on all the
+training data on backends that support fine-tuning, and `fit` raises `UnsupportedBackendError` on the others. In a
+pipeline, intermediate steps are fitted through `fit_transform`, which ignores `y`, so a transcriber in front of a
 classifier never reads the class labels as transcripts.
 <!-- --8<-- [end:fit] -->
 
@@ -143,74 +147,62 @@ Describe images, then classify the descriptions in one pipeline:
 ```python
 from PIL import Image
 from sklearn.pipeline import make_pipeline
-from skai.description import ImageDescriptor
+from skai.generation import ImageToTextGenerator
 
 images = [Image.new('RGB', (64, 64), color) for color in ('red', 'green', 'blue', 'white')]
-pipeline = make_pipeline(ImageDescriptor(backend='dummy'), TextClassifier(backend='dummy'))
+pipeline = make_pipeline(
+    ImageToTextGenerator(instructions='Describe the image.', backend='dummy'),
+    TextClassifier(backend='dummy'),
+)
 pipeline.fit(images, ['warm', 'cold', 'cold', 'warm']).predict(images)
 ```
 
 Make a portrait speak a text:
 
 ```python
-from skai.generation import TalkingAvatarGenerator
-from skai.generation import SpeechSynthesizer
+from skai.generation import AudioToVideoGenerator, TextToAudioGenerator
 
 portrait = Image.new('RGB', (64, 64), 'white')
 pipeline = make_pipeline(
-    SpeechSynthesizer(backend='dummy'),
-    TalkingAvatarGenerator(avatar=portrait, backend='dummy'),
+    TextToAudioGenerator(backend='dummy'),
+    AudioToVideoGenerator(avatar=portrait, backend='dummy'),
 )
 videos = pipeline.fit(None).predict(['Hello, I am a talking portrait.'])
 videos[0].duration
 ```
 
+Turn a brief into a narrated, subtitled video with a recipe:
+
+```python
+from skai import recipes
+
+explainer = recipes.explainer_video(size=(64, 48), scene_seconds=1, backend='dummy')
+video = explainer.fit(None).predict(['How solar panels work'])[0]
+video.duration, video.audio is not None
+```
+
 ## Backends
 
 The `backend` parameter takes `'<provider>'`, `'<provider>:<model>'` or a backend object from `skai.backends`. Without
-it, components run an open-source model.
+it, components run an open-source model, locally with `hf` for most operations.
 
 <!-- --8<-- [start:providers] -->
 | Provider | Backend | Runs | Install | Tasks |
 |---|---|---|---|---|
-| `hf` | `HFBackend` | locally, open-source models | `scikit-ai[hf]` | every task except talking avatars |
-| `openai` | `OpenAIBackend` | OpenAI API | `scikit-ai[openai]` | every task except talking avatars and image and audio embeddings |
-| `litellm` | `LiteLLMBackend` | Anthropic, Gemini, Mistral, Bedrock, Azure, Ollama and others through LiteLLM | `scikit-ai[litellm]` | classification, description, summarization, translation, extraction, text and image embeddings |
-| `replicate` | `ReplicateBackend` | open-source models hosted by Replicate | `scikit-ai[replicate]` | talking avatars, image generation, speech synthesis with voice cloning |
+| `hf` | `HFBackend` | locally, open-source models | `scikit-ai[hf]` | every task except talking heads, voice conversion, lip sync and fine-tuning, with diarization from `scikit-ai[diarize]` |
+| `openai` | `OpenAIBackend` | OpenAI API | `scikit-ai[openai]` | classification, text generation, extraction, transcription, text embeddings, object detection, moments, thumbnails, speech, image generation with reference images and edits, video generation and animation, fine-tuning |
+| `litellm` | `LiteLLMBackend` | Anthropic, Gemini, Mistral, Bedrock, Azure, Ollama and others through LiteLLM | `scikit-ai[litellm]` | classification, text generation, extraction, image transcription, object detection, moments, thumbnails, text and image embeddings |
+| `replicate` | `ReplicateBackend` | open-source models hosted by Replicate | `scikit-ai[replicate]` | talking heads, lip sync, voice conversion, image generation, speech synthesis with voice cloning |
 | `dummy` | `DummyBackend` | locally, no model | included | every task, with placeholder outputs for tests and documentation |
 <!-- --8<-- [end:providers] -->
 
-The default model of every component and provider:
-
-<!-- --8<-- [start:defaults] -->
-| Component | Default backend | `hf` | `openai` | `litellm` | `replicate` |
-|---|---|---|---|---|---|
-| `TextClassifier` | `hf` | `facebook/bart-large-mnli` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `TextSummarizer` | `hf` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `TextTranslator` | `hf` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `TextEmbedder` | `hf` | `sentence-transformers/all-MiniLM-L6-v2` | `text-embedding-3-small` | `openai/text-embedding-3-small` | |
-| `SpeechSynthesizer` | `hf` | `facebook/mms-tts-eng` | `gpt-4o-mini-tts` | | `jaaari/kokoro-82m`, `lucataco/xtts-v2` to clone a voice |
-| `ImageGenerator` | `hf` | `stabilityai/sd-turbo` | `gpt-image-1` | | `black-forest-labs/flux-schnell` |
-| `ImageDescriptor` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `ImageClassifier` | `hf` | `openai/clip-vit-base-patch32` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `SpeechTranscriber` | `hf` | `openai/whisper-small` | `whisper-1` | | |
-| `TalkingAvatarGenerator` | `replicate` | | | | `cjwbw/sadtalker` |
-| `AudioClassifier` | `hf` | `laion/clap-htsat-unfused` | `gpt-audio-mini` | `gemini/gemini-2.5-flash` | |
-| `VideoClassifier` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `gemini/gemini-2.5-flash` | |
-| `AudioDescriptor` | `hf` | `Qwen/Qwen2-Audio-7B-Instruct` | `gpt-audio-mini` | `gemini/gemini-2.5-flash` | |
-| `VideoDescriptor` | `hf` | `HuggingFaceTB/SmolVLM-256M-Instruct` | `gpt-5-mini` | `gemini/gemini-2.5-flash` | |
-| `VideoTranscriber` | `hf` | `openai/whisper-small` | `whisper-1` | | |
-| `TextExtractor` | `hf` | `Qwen/Qwen2.5-1.5B-Instruct` | `gpt-5-mini` | `anthropic/claude-haiku-5-5` | |
-| `ImageEmbedder` | `hf` | `clip-ViT-B-32` | | `cohere/embed-v4.0` | |
-| `AudioEmbedder` | `hf` | `laion/clap-htsat-unfused` | | | |
-| `VideoGenerator` | `hf` | `Wan-AI/Wan2.1-T2V-1.3B-Diffusers` | `sora-2` | | |
-| `ImageEditor` | `hf` | `timbrooks/instruct-pix2pix` | `gpt-image-1` | | |
-| `ImageAnimator` | `hf` | `stabilityai/stable-video-diffusion-img2vid-xt` | `sora-2` | | |
-<!-- --8<-- [end:defaults] -->
+Local operations, such as joining clips, mixing tracks, muxing, subtitles, collages, frames, shot cuts, silences and
+text splitting, run without a backend. The [backends guide](https://georgedouzas.github.io/scikit-ai/guide/backends/)
+lists the providers and the default model of every class and operation.
 
 Cloud backends read credentials from environment variables, such as `OPENAI_API_KEY` or `REPLICATE_API_TOKEN`, and
-never take a secret as an argument. Generated speech and talking avatars can imitate real people. Use them only with
-the consent of the people they depict, and within the policies of the providers.
+never take a secret as an argument. Generated speech, converted voices, lip sync and talking heads can imitate real
+people. Use them only with the consent of the people they depict, and within the policies of the providers.
 
 ## Spec-driven development
 

@@ -16,15 +16,27 @@ from skai.core import (
     FineTuneError,
     InvalidResponseError,
     SampleError,
+    TranscriptionRequest,
     UnsupportedBackendError,
     Video,
 )
-from skai.description import AudioDescriptor, ImageDescriptor
 from skai.embedding import TextEmbedder
-from skai.generation import ImageAnimator, ImageEditor, ImageGenerator, SpeechSynthesizer, VideoGenerator
-from skai.text import TextSummarizer, TextTranslator
-from skai.transcription import SpeechTranscriber
+from skai.generation import (
+    AudioToTextGenerator,
+    ImageToImageGenerator,
+    ImageToTextGenerator,
+    ImageToVideoGenerator,
+    TextToAudioGenerator,
+    TextToImageGenerator,
+    TextToTextGenerator,
+    TextToVideoGenerator,
+)
 from tests.fakes import Recorder, chat_response, install_module, namespace, png_of, round_trip, wav_of
+
+
+def summarizer(**params):
+    """Return a text generator that summarizes."""
+    return TextToTextGenerator(instructions='Summarize the text.', **params)
 
 
 def make_client(answer='positive'):
@@ -63,15 +75,15 @@ def test_connect_creates_client_from_environment(monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY', 'sk-test')
     backend = OpenAIBackend(base_url='http://localhost:1234/v1').connect()
     assert created == {'api_key': 'sk-test', 'base_url': 'http://localhost:1234/v1'}
-    assert backend.supported_tasks() >= {'summarize', 'transcribe', 'generate_image'}
+    assert backend.supported_tasks() >= {'generate_text', 'transcribe', 'generate_image'}
 
 
 def test_unpickled_backend_reconnects(monkeypatch):
     """Create the client again on first use after it was dropped."""
     install_module(monkeypatch, 'openai', OpenAI=lambda **kwargs: make_client('restored'))
     monkeypatch.setenv('OPENAI_API_KEY', 'sk-test')
-    summarizer = round_trip(TextSummarizer(backend='openai').fit())
-    assert summarizer.predict(['text'])[0] == 'restored'
+    generator = round_trip(summarizer(backend='openai').fit())
+    assert generator.predict(['text'])[0] == 'restored'
 
 
 def test_text_classifier_parses_named_label():
@@ -132,32 +144,34 @@ def test_text_classifier_parses_multilabel_answers():
 def test_options_are_forwarded():
     """Pass `options` to every API call."""
     client = make_client('short')
-    TextSummarizer(backend=OpenAIBackend(client=client, options={'temperature': 0})).fit().predict(['long text'])
+    summarizer(backend=OpenAIBackend(client=client, options={'temperature': 0})).fit().predict(['long text'])
     assert client.chat.completions.create.calls[-1]['temperature'] == 0
 
 
-def test_summarizer_and_translator_prompt_the_model():
-    """Ask for the summary length, the style and the target language."""
+def test_text_generation_prompts_the_model():
+    """Send the instructions and the length limit, and strip the answer."""
     client = make_client(' answer ')
     backend = OpenAIBackend(model='gpt-test', client=client)
-    assert TextSummarizer(max_length=20, style='formal', backend=backend).fit().predict(['text'])[0] == 'answer'
-    assert 'at most 20 words. Write it in this style: formal.' in last_messages(client)[1]['content'][0]['text']
+    assert summarizer(max_length=20, backend=backend).fit().predict(['text'])[0] == 'answer'
+    text = last_messages(client)[1]['content'][0]['text']
+    assert text.startswith('Instructions: Summarize the text.\nUse at most 20 words.')
     assert client.chat.completions.create.calls[-1]['model'] == 'gpt-test'
-    TextTranslator(target_language='Greek', source_language='English', backend=backend).fit().predict(['hi'])
-    assert 'from English into Greek' in last_messages(client)[1]['content'][0]['text']
+    translator = TextToTextGenerator(instructions='Translate from English into Greek.', backend=backend)
+    translator.fit().predict(['hi'])
+    assert 'Instructions: Translate from English into Greek.' in last_messages(client)[1]['content'][0]['text']
 
 
 def test_image_descriptor_sends_image():
-    """Send the image as a data URL with the detail instruction."""
+    """Send the image as a data URL with the instructions."""
     client = make_client('A red square.')
-    descriptor = ImageDescriptor(
-        detail='detailed',
-        instructions='Name the color.',
+    descriptor = ImageToTextGenerator(
+        instructions='Describe the image in one detailed paragraph. Name the color.',
         backend=OpenAIBackend(client=client),
     )
     assert descriptor.fit().predict([Image.new('RGB', (4, 4), 'red')]).tolist() == ['A red square.']
     content = last_messages(client)[1]['content']
     assert 'one detailed paragraph. Name the color.' in content[0]['text']
+    assert client.chat.completions.create.calls[-1]['model'] == 'gpt-5-mini'
     assert content[1]['image_url']['url'].startswith('data:image/png;base64,')
 
 
@@ -185,18 +199,18 @@ def test_embedder_requests_dimensions():
 def test_synthesizer_uses_voice():
     """Request WAV speech in the chosen voice."""
     client = make_client()
-    speech = SpeechSynthesizer(voice='nova', backend=OpenAIBackend(client=client)).fit().predict(['hello'])
+    speech = TextToAudioGenerator(voice='nova', backend=OpenAIBackend(client=client)).fit().predict(['hello'])
     assert isinstance(speech[0], Audio)
     assert speech[0].duration == pytest.approx(0.5)
     call = client.audio.speech.create.calls[-1]
     assert (call['voice'], call['response_format'], call['input']) == ('nova', 'wav', 'hello')
-    SpeechSynthesizer(backend=OpenAIBackend(client=client, voice='echo')).fit().predict(['hi'])
+    TextToAudioGenerator(backend=OpenAIBackend(client=client, voice='echo')).fit().predict(['hi'])
     assert client.audio.speech.create.calls[-1]['voice'] == 'echo'
 
 
 def test_synthesizer_cannot_clone_voices(audio):
     """Reject reference audio and list the backends that clone voices."""
-    synthesizer = SpeechSynthesizer(voice=audio.to_bytes(), backend=OpenAIBackend(client=make_client()))
+    synthesizer = TextToAudioGenerator(voice=audio.to_bytes(), backend=OpenAIBackend(client=make_client()))
     with pytest.raises(UnsupportedBackendError, match=r"cannot clone voices.*\['dummy', 'replicate'\]"):
         synthesizer.fit()
 
@@ -204,7 +218,7 @@ def test_synthesizer_cannot_clone_voices(audio):
 def test_image_generator_requests_size():
     """Request the size and the styled prompt."""
     client = make_client()
-    generator = ImageGenerator(size=(16, 8), style='flat', backend=OpenAIBackend(client=client)).fit()
+    generator = TextToImageGenerator(size=(16, 8), style='flat', backend=OpenAIBackend(client=client)).fit()
     assert generator.predict(['a cat'])[0].size == (16, 8)
     call = client.images.generate.calls[-1]
     assert (call['size'], call['prompt']) == ('16x8', 'a cat. Style: flat')
@@ -213,17 +227,18 @@ def test_image_generator_requests_size():
 @pytest.mark.parametrize(
     ('timestamps', 'expected'),
     [
-        (None, 'hello world'),
-        ('segment', [{'start': 0.0, 'end': 1.0, 'text': 'hello world'}]),
-        ('word', [{'start': 0.0, 'end': 0.4, 'text': 'hello'}, {'start': 0.4, 'end': 1.0, 'text': 'world'}]),
+        (None, []),
+        ('segment', [(0.0, 1.0, 'hello world')]),
+        ('word', [(0.0, 0.4, 'hello'), (0.4, 1.0, 'world')]),
     ],
 )
-def test_transcriber_reads_text_and_timestamps(audio, timestamps, expected):
+def test_transcription_reads_text_and_timestamps(audio, timestamps, expected):
     """Request verbose output for timestamps and read the segments or words."""
     client = make_client()
-    transcriber = SpeechTranscriber(language='en', timestamps=timestamps, backend=OpenAIBackend(client=client)).fit()
-    assert transcriber.predict([audio])[0] == expected
-    assert transcriber.transform([audio]).tolist() == ['hello world']
+    backend = OpenAIBackend(client=client)
+    transcript = backend.transcribe(TranscriptionRequest(audio, language='en', timestamps=timestamps))
+    assert transcript.text == 'hello world'
+    assert [(segment.start, segment.end, segment.text) for segment in transcript.segments] == expected
     call = client.audio.transcriptions.create.calls[-1]
     assert call['language'] == 'en'
     assert call['file'][0] == 'audio.wav'
@@ -233,7 +248,8 @@ def test_transcriber_reads_text_and_timestamps(audio, timestamps, expected):
 def test_transcriber_sends_vocabulary_as_prompt(audio):
     """Send the learned vocabulary as the transcription prompt."""
     client = make_client()
-    transcriber = SpeechTranscriber(backend=OpenAIBackend(client=client)).fit([audio], ['We run Kubernetes over gRPC.'])
+    transcriber = AudioToTextGenerator(backend=OpenAIBackend(client=client))
+    transcriber.fit([audio], ['We run Kubernetes over gRPC.'])
     transcriber.predict([audio])
     assert client.audio.transcriptions.create.calls[-1]['prompt'] == 'Kubernetes, gRPC'
 
@@ -275,14 +291,14 @@ def test_fine_tuning_reports_failed_jobs():
     """Raise `FineTuneError` with the job id and its error."""
     backend = OpenAIBackend(client=fine_tuning_client(['running', 'failed']), poll_interval=0)
     with pytest.raises(FineTuneError, match='ftjob-1 ended with status `failed` \\(bad data\\)'):
-        TextSummarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
+        summarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
 
 
 def test_fine_tuning_times_out_with_job_id():
     """Raise `TimeoutError` naming the job when it takes too long."""
     backend = OpenAIBackend(client=fine_tuning_client(['running'] * 3), finetune_timeout=0, poll_interval=0)
     with pytest.raises(TimeoutError, match='ftjob-1 did not finish'):
-        TextSummarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
+        summarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
 
 
 def test_json_prompts_use_json_mode():
@@ -312,7 +328,7 @@ def test_fine_tuning_reports_refused_jobs():
     client.fine_tuning.jobs.create = refuse
     backend = OpenAIBackend(client=client, poll_interval=0)
     with pytest.raises(FineTuneError, match='OpenAI refused the fine-tuning job: OpenAI is winding down'):
-        TextSummarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
+        summarizer(adaptation='finetune', backend=backend).fit([f't {i}' for i in range(10)], ['s'] * 10)
 
 
 def test_fine_tuning_keeps_other_errors():
@@ -326,7 +342,7 @@ def test_fine_tuning_keeps_other_errors():
     client = fine_tuning_client([])
     client.files.create = fail
     with pytest.raises(ConnectionError, match='connection reset'):
-        TextSummarizer(adaptation='finetune', backend=OpenAIBackend(client=client)).fit(['t'] * 10, ['s'] * 10)
+        summarizer(adaptation='finetune', backend=OpenAIBackend(client=client)).fit(['t'] * 10, ['s'] * 10)
 
 
 def video_client(statuses, frames=10, size=(1280, 720)):
@@ -353,8 +369,11 @@ def test_audio_tasks_send_audio_parts(audio):
     part = call['messages'][1]['content'][-1]
     assert part['type'] == 'input_audio'
     assert part['input_audio']['format'] == 'wav'
-    AudioDescriptor(backend=OpenAIBackend(client=client)).fit().predict([audio])
-    assert client.chat.completions.create.calls[-1]['messages'][1]['content'][-1]['type'] == 'input_audio'
+    describer = AudioToTextGenerator(operation='instruct', instructions='Describe the audio.')
+    describer.set_params(backend=OpenAIBackend(client=client)).fit().predict([audio])
+    call = client.chat.completions.create.calls[-1]
+    assert call['model'] == 'gpt-audio-mini'
+    assert call['messages'][1]['content'][-1]['type'] == 'input_audio'
 
 
 def test_video_tasks_send_frames_without_audio(audio):
@@ -375,7 +394,12 @@ def test_image_edits_send_alpha_mask():
     )
     mask = Image.new('L', (8, 6), 0)
     mask.paste(255, (0, 0, 4, 6))
-    editor = ImageEditor(instruction='make it night', mask=mask, backend=OpenAIBackend(client=client)).fit()
+    editor = ImageToImageGenerator(
+        operation='edit',
+        instructions='make it night',
+        mask=mask,
+        backend=OpenAIBackend(client=client),
+    ).fit()
     assert editor.predict([Image.new('RGB', (8, 6))])[0].size == (8, 6)
     call = client.images.edit.calls[-1]
     assert call['prompt'] == 'make it night'
@@ -387,7 +411,7 @@ def test_image_edits_send_alpha_mask():
 def test_video_generation_waits_trims_and_resizes():
     """Request the closest Sora length and size, wait for the job, then fit the video to the request."""
     client = video_client(['queued', 'in_progress', 'completed'])
-    generator = VideoGenerator(duration=2, size=(320, 180), backend=OpenAIBackend(client=client, poll_interval=0))
+    generator = TextToVideoGenerator(duration=2, size=(320, 180), backend=OpenAIBackend(client=client, poll_interval=0))
     video = generator.fit().predict(['a boat'])[0]
     call = client.videos.create.calls[-1]
     assert (call['model'], call['seconds'], call['size']) == ('sora-2', '4', '1280x720')
@@ -398,7 +422,7 @@ def test_video_generation_waits_trims_and_resizes():
 def test_video_generation_reports_failed_jobs():
     """Raise a sample error naming the failed video job."""
     client = video_client(['in_progress', 'failed'])
-    generator = VideoGenerator(backend=OpenAIBackend(client=client, poll_interval=0)).fit()
+    generator = TextToVideoGenerator(backend=OpenAIBackend(client=client, poll_interval=0)).fit()
     with pytest.raises(SampleError, match='video-1 ended with status `failed`'):
         generator.predict(['a boat'])
 
@@ -406,9 +430,25 @@ def test_video_generation_reports_failed_jobs():
 def test_animation_sends_image_as_reference():
     """Send the image, resized to the Sora size, as the input reference."""
     client = video_client(['completed'], size=(720, 1280))
-    animator = ImageAnimator(duration=1, backend=OpenAIBackend(client=client, poll_interval=0)).fit()
+    animator = ImageToVideoGenerator(duration=1, backend=OpenAIBackend(client=client, poll_interval=0)).fit()
     video = animator.predict([Image.new('RGB', (90, 160))])[0]
     call = client.videos.create.calls[-1]
     assert call['size'] == '720x1280'
     assert call['input_reference'][0] == 'image.png'
     assert video.frames.shape[1:3] == (160, 90)
+
+
+def test_reference_images_go_to_the_edit_endpoint():
+    """Send reference images of the subject to the edit endpoint with the prompt and size."""
+    client = make_client()
+    client.images.edit = Recorder(
+        lambda **kwargs: namespace(data=[namespace(b64_json=base64.b64encode(png_of((16, 8))).decode())]),
+    )
+    generator = TextToImageGenerator(size=(16, 8), reference_prompt='a red fox', backend=OpenAIBackend(client=client))
+    image = generator.fit().predict(['the fox reads a book'])[0]
+    assert image.size == (16, 8)
+    assert len(client.images.generate.calls) == 1
+    call = client.images.edit.calls[-1]
+    assert call['prompt'] == 'the fox reads a book'
+    assert call['size'] == '16x8'
+    assert [name for name, _, _ in call['image']] == ['reference-0.png']

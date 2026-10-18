@@ -9,7 +9,7 @@ from typing import ClassVar, Literal
 from numpy.typing import ArrayLike
 from sklearn.utils._param_validation import Interval
 
-from skai.core import Backend, BaseClassifier, VideoFrames, read_video, sample_frames
+from skai.core import Backend, BaseClassifier
 
 
 class VideoClassifier(BaseClassifier):
@@ -76,7 +76,7 @@ class VideoClassifier(BaseClassifier):
         (2,)
     """
 
-    task: ClassVar[str] = 'classify_video'
+    operations: ClassVar[dict[str, str | None]] = {'classify': 'classify_video'}
     input_kind: ClassVar[Literal['video']] = 'video'
     _parameter_constraints: ClassVar[dict] = {
         **BaseClassifier._parameter_constraints,
@@ -105,7 +105,3 @@ class VideoClassifier(BaseClassifier):
         self.batch_size = batch_size
         self.on_error = on_error
         self.random_state = random_state
-
-    def _read(self, sample: object, index: int) -> VideoFrames:
-        """Read a video and sample its frames."""
-        return sample_frames(read_video(sample, index), self.n_frames)

@@ -1,17 +1,39 @@
-"""Components that generate and edit images, speech and video."""
+"""Components that generate texts, images, audio and videos from every input kind."""
 
-from ._animator import ImageAnimator
-from ._avatar import TalkingAvatarGenerator
-from ._editor import ImageEditor
-from ._image import ImageGenerator
-from ._speech import SpeechSynthesizer
-from ._video import VideoGenerator
+from ._audio import AudioToAudioGenerator, MultimodalToAudioGenerator, TextToAudioGenerator, VideoToAudioGenerator
+from ._image import ImageToImageGenerator, MultimodalToImageGenerator, TextToImageGenerator, VideoToImageGenerator
+from ._text import (
+    AudioToTextGenerator,
+    ImageToTextGenerator,
+    MultimodalToTextGenerator,
+    TextToTextGenerator,
+    VideoToTextGenerator,
+)
+from ._video import (
+    AudioToVideoGenerator,
+    ImageToVideoGenerator,
+    MultimodalToVideoGenerator,
+    TextToVideoGenerator,
+    VideoToVideoGenerator,
+)
 
 __all__: list[str] = [
-    'ImageAnimator',
-    'ImageEditor',
-    'ImageGenerator',
-    'SpeechSynthesizer',
-    'TalkingAvatarGenerator',
-    'VideoGenerator',
+    'AudioToAudioGenerator',
+    'AudioToTextGenerator',
+    'AudioToVideoGenerator',
+    'ImageToImageGenerator',
+    'ImageToTextGenerator',
+    'ImageToVideoGenerator',
+    'MultimodalToAudioGenerator',
+    'MultimodalToImageGenerator',
+    'MultimodalToTextGenerator',
+    'MultimodalToVideoGenerator',
+    'TextToAudioGenerator',
+    'TextToImageGenerator',
+    'TextToTextGenerator',
+    'TextToVideoGenerator',
+    'VideoToAudioGenerator',
+    'VideoToImageGenerator',
+    'VideoToTextGenerator',
+    'VideoToVideoGenerator',
 ]

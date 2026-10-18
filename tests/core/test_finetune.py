@@ -8,8 +8,7 @@ from PIL import Image
 from skai.backends import DummyBackend
 from skai.classification import TextClassifier
 from skai.core import UnsupportedBackendError
-from skai.description import ImageDescriptor
-from skai.text import TextSummarizer, TextTranslator
+from skai.generation import ImageToTextGenerator, TextToTextGenerator
 from tests.fakes import ScriptedBackend
 
 TEXTS = [f'review number {index}' for index in range(20)]
@@ -57,15 +56,23 @@ def test_classifier_uses_fine_tuned_model():
 
 
 def test_generators_fine_tune_on_references():
-    """Fine-tune the summarizer, translator and descriptor on their references."""
+    """Fine-tune summarizing, translating and describing generators on their references."""
     summaries = [text.split()[-1] for text in TEXTS]
-    summarizer = TextSummarizer(adaptation='finetune', backend=TuningBackend()).fit(TEXTS, summaries)
+    summarizer = TextToTextGenerator(instructions='Summarize the text.', adaptation='finetune', backend=TuningBackend())
+    summarizer.fit(TEXTS, summaries)
     assert summarizer.model_.startswith('dummy-finetuned-')
+    assert TuningBackend.tunings[-1].task == 'generate_text'
     assert TuningBackend.tunings[-1].examples[0][1] == summaries[0]
-    translator = TextTranslator(target_language='Greek', adaptation='finetune', backend=TuningBackend())
+    translator = TextToTextGenerator(
+        instructions='Translate into Greek.',
+        learn_terms=True,
+        adaptation='finetune',
+        backend=TuningBackend(),
+    )
     assert translator.fit(TEXTS, summaries).backend_.model == translator.model_
     images = [Image.new('RGB', (4, 4), (index, 0, 0)) for index in range(20)]
-    descriptor = ImageDescriptor(adaptation='finetune', backend=TuningBackend()).fit(images, summaries)
+    descriptor = ImageToTextGenerator(instructions='Describe.', adaptation='finetune', backend=TuningBackend())
+    descriptor.fit(images, summaries)
     assert len(TuningBackend.tunings[-1].examples[0][0].images) == 1
     assert descriptor.predict(images[:1])[0]
 
@@ -89,4 +96,10 @@ def test_fine_tuning_requires_targets():
     with pytest.raises(ValueError, match='needs the targets'):
         TextClassifier(labels=['a', 'b'], adaptation='finetune', backend='dummy').fit()
     with pytest.raises(ValueError, match='needs reference outputs'):
-        TextSummarizer(adaptation='finetune', backend='dummy').fit(TEXTS)
+        TextToTextGenerator(instructions='Summarize the text.', adaptation='finetune', backend='dummy').fit(TEXTS)
+
+
+def test_only_instructed_generation_fine_tunes():
+    """Refuse fine-tuning a transcribing generator."""
+    with pytest.raises(ValueError, match="only with `operation='instruct'`"):
+        ImageToTextGenerator(operation='transcribe', adaptation='finetune', backend='dummy').fit()

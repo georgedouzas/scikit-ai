@@ -41,11 +41,13 @@ hf = [
     "sentence-transformers>=3.2.0",
     "diffusers>=0.31.0",
     "accelerate>=1.0.0",
+    "torchaudio>=2.4.0",
 ]
+diarize = ["pyannote.audio>=3.1.0,<4.0"]
 litellm = ["litellm>=1.50.0"]
 replicate = ["replicate>=1.0.0"]
 video = ["av>=13.0.0"]
-all = ["scikit-ai[openai,hf,litellm,replicate,video]"]
+all = ["scikit-ai[openai,hf,diarize,litellm,replicate,video]"]
 
 [project.entry-points."skai.backends"]
 dummy = "skai.backends:DummyBackend"
@@ -169,12 +171,20 @@ select = ["C", "E", "F", "W", "B", "I", "D", "N", "UP", "YTT", "ANN", "S",
 "e2e/test_openai_fit.py" = ["RUF001"]
 # Components narrow the sample types of the base hooks, and backends and media codecs handle objects of untyped
 # optional libraries.
+# Samples, regions and records are of any kind, and meta-estimators pass parameters through.
 "src/skai/core/_estimator.py" = ["ANN401"]
 "src/skai/core/_media.py" = ["ANN401"]
+"src/skai/core/_io.py" = ["ANN401"]
+"src/skai/core/_local.py" = ["ANN401"]
+"src/skai/core/_prompts.py" = ["ANN401"]
 "src/skai/backends/*" = ["ANN401"]
-"src/skai/text/*" = ["ANN401"]
+"src/skai/embedding/*" = ["ANN401"]
+"src/skai/extraction/*" = ["ANN401"]
+"src/skai/segmentation/*" = ["ANN401"]
 "src/skai/generation/*" = ["ANN401"]
-"src/skai/transcription/*" = ["ANN401"]
+"src/skai/pipeline/*" = ["ANN401"]
+"src/skai/presets/*" = ["ANN401"]
+"src/skai/recipes/*" = ["ANN401"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -214,6 +224,7 @@ ignore-init-method = true
 scikit-learn = "sklearn"
 pillow = "PIL"
 sentence-transformers = "sentence_transformers"
+"pyannote.audio" = "pyannote"
 
 [tool.deptry.per_rule_ignores]
 # Optional backend dependencies are imported by name through `skai.core.import_optional`, and the `all` extra
@@ -226,6 +237,8 @@ DEP002 = [
     "sentence-transformers",
     "diffusers",
     "accelerate",
+    "torchaudio",
+    "pyannote.audio",
     "litellm",
     "replicate",
     "av",

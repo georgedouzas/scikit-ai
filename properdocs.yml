@@ -28,13 +28,15 @@ nav:
     - Backends: guide/backends.md
     - What fit learns: guide/fit.md
     - Classification: guide/classification.md
-    - Description: guide/description.md
-    - Transcription: guide/transcription.md
-    - Text: guide/text.md
+    - Extraction: guide/extraction.md
     - Embedding: guide/embedding.md
-    - Generation: guide/generation.md
+    - Segmentation: guide/segmentation.md
+    - Text generation: guide/text-generation.md
+    - Media generation: guide/generation.md
     - Pipelines: guide/pipelines.md
-    - Migrating from 0.1: guide/migration.md
+    - Presets: guide/presets.md
+    - Recipes: guide/recipes.md
+    - Migrating from 0.2: guide/migration.md
   - API: api/
   - Examples: generated/gallery
   - Development:

@@ -1,7 +1,8 @@
 # Embedding
 
-`skai.embedding` holds the components that map samples to fixed-size vectors, so any scikit-learn model can use them
-as features. `TextEmbedder` returns vectors of `dimensions` entries, optionally of unit length.
+`skai.embedding` holds the components that map samples to fixed-size vectors: `TextEmbedder`, `ImageEmbedder`,
+`AudioEmbedder` and `VideoEmbedder`. Any scikit-learn model can use the vectors as features. `TextEmbedder` returns
+vectors of `dimensions` entries, optionally of unit length.
 
 ```python exec="true" source="above" result="text"
 from sklearn.linear_model import LogisticRegression
@@ -28,6 +29,21 @@ images = [Image.new('RGB', (16, 16), color) for color in ('red', 'green', 'blue'
 gallery = ImageEmbedder(normalize=True, center=False, backend='dummy:joint').fit().transform(images)
 query = TextEmbedder(normalize=True, center=False, backend='dummy:joint').fit().transform(['a green square'])
 print(NearestNeighbors(n_neighbors=2).fit(gallery).kneighbors(query, return_distance=False))
+```
+
+## Videos
+
+`VideoEmbedder` maps every video to the mean of the embeddings of `n_frames` frames sampled evenly over it, with the
+image embedding model of the backend. With a joint text and image model, texts can retrieve videos, and with
+`VideoSegmenter` and `Retriever` they can retrieve single shots, as the `video_search` [recipe](recipes.md) does.
+
+```python exec="true" source="above" result="text"
+import numpy as np
+from skai.core import Video
+from skai.embedding import VideoEmbedder
+
+videos = [Video(np.full((8, 8, 8, 3), value, dtype=np.uint8), fps=4) for value in (0, 100, 200)]
+print(VideoEmbedder(n_frames=4, dimensions=2, backend='dummy').fit_transform(videos).shape)
 ```
 
 ## What fit learns

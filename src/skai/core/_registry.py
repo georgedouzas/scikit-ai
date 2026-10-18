@@ -39,8 +39,8 @@ def register(name: str, backend_class: type[Backend]) -> None:
     Examples:
         >>> from skai.core import Backend, register
         >>> class EchoBackend(Backend):
-        ...     def summarize(self, request):
-        ...         return request.text
+        ...     def generate_text(self, request):
+        ...         return request.sample
         >>> register('echo', EchoBackend)
     """
     if not (isinstance(backend_class, type) and issubclass(backend_class, Backend)):
@@ -49,7 +49,11 @@ def register(name: str, backend_class: type[Backend]) -> None:
     BACKENDS[name] = backend_class
 
 
-def list_backends(task: str | None = None, predicate: Callable[[type[Backend]], bool] | None = None) -> list[str]:
+def list_backends(
+    task: str | None = None,
+    predicate: Callable[[type[Backend]], bool] | None = None,
+    input_kind: str | None = None,
+) -> list[str]:
     """List the names of the registered backends.
 
     Args:
@@ -59,23 +63,27 @@ def list_backends(task: str | None = None, predicate: Callable[[type[Backend]], 
         predicate:
             Keep only the backend classes for which this function returns `True`.
 
+        input_kind:
+            Keep only the backends that run the task on samples of this input kind.
+
     Returns:
         The sorted backend names.
 
     Examples:
         >>> from skai.core import list_backends
-        >>> 'dummy' in list_backends('summarize')
+        >>> 'dummy' in list_backends('generate_text')
         True
     """
     _load_entry_points()
     return sorted(
         name
         for name, backend_class in BACKENDS.items()
-        if (task is None or task in backend_class.supported_tasks()) and (predicate is None or predicate(backend_class))
+        if (task is None or backend_class.supports(task, input_kind))
+        and (predicate is None or predicate(backend_class))
     )
 
 
-def resolve_backend(backend: str | Backend, task: str) -> Backend:
+def resolve_backend(backend: str | Backend, task: str, input_kind: str | None = None) -> Backend:
     """Turn the `backend` parameter of a component into a connected backend that supports a task.
 
     Args:
@@ -84,6 +92,9 @@ def resolve_backend(backend: str | Backend, task: str) -> Backend:
 
         task:
             The task the backend must support.
+
+        input_kind:
+            The input kind of the samples the backend must accept for the task.
 
     Returns:
         The connected backend.
@@ -98,10 +109,15 @@ def resolve_backend(backend: str | Backend, task: str) -> Backend:
         _load_entry_points()
         name, _, model = backend.partition(':')
         if name not in BACKENDS:
-            msg = f'Unknown backend `{name}`. Backends that support `{task}`: {list_backends(task)}.'
+            backends = list_backends(task, input_kind=input_kind)
+            msg = f'Unknown backend `{name}`. Backends that support `{task}`: {backends}.'
             raise UnsupportedBackendError(msg)
         instance = BACKENDS[name](model=model or None)
-    if task not in type(instance).supported_tasks():
-        msg = f'{type(instance).__name__} does not support `{task}`. Backends that do: {list_backends(task)}.'
+    if not type(instance).supports(task, input_kind):
+        on = '' if input_kind is None else f' on {input_kind} samples'
+        msg = (
+            f'{type(instance).__name__} does not support `{task}`{on}. '
+            f'Backends that do: {list_backends(task, input_kind=input_kind)}.'
+        )
         raise UnsupportedBackendError(msg)
     return instance.connect()

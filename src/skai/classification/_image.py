@@ -68,7 +68,7 @@ class ImageClassifier(BaseClassifier):
         (1, 2)
     """
 
-    task: ClassVar[str] = 'classify_image'
+    operations: ClassVar[dict[str, str | None]] = {'classify': 'classify_image'}
     input_kind: ClassVar[Literal['image']] = 'image'
 
     def __init__(

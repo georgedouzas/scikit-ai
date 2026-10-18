@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Media generators for every input and output
-The library SHALL provide in `skai.generation` the generators `TextToImageGenerator`, `ImageToImageGenerator`, `VideoToImageGenerator`, `TextToAudioGenerator`, `AudioToAudioGenerator`, `VideoToAudioGenerator`, `MultimodalToAudioGenerator`, `TextToVideoGenerator`, `ImageToVideoGenerator`, `AudioToVideoGenerator`, `VideoToVideoGenerator` and `MultimodalToVideoGenerator`. Each SHALL return one output of the type its name ends with, in the requested `output_format`.
+The library SHALL provide in `skai.generation` the generators `TextToImageGenerator`, `ImageToImageGenerator`, `VideoToImageGenerator`, `MultimodalToImageGenerator`, `TextToAudioGenerator`, `AudioToAudioGenerator`, `VideoToAudioGenerator`, `MultimodalToAudioGenerator`, `TextToVideoGenerator`, `ImageToVideoGenerator`, `AudioToVideoGenerator`, `VideoToVideoGenerator` and `MultimodalToVideoGenerator`. Each SHALL return one output of the type its name ends with, in the requested `output_format`.
 
 #### Scenario: Output type follows the name
 - **WHEN** each media generator predicts on one sample of its input type on `dummy`
@@ -14,7 +14,7 @@ Every generator SHALL take an `operation` from its own set, with a default, and 
 
 #### Scenario: Operations per generator
 - **WHEN** a user reads the `operation` values of every generator
-- **THEN** they are, default first: `TextToImageGenerator` `generate`; `ImageToImageGenerator` `edit`, `upscale`, `remove_background`, `collage`; `VideoToImageGenerator` `thumbnail`, `frame`; `TextToAudioGenerator` `speech`, `music`, `sound`; `AudioToAudioGenerator` `separate`, `enhance`, `convert_voice`, `concatenate`; `VideoToAudioGenerator` `extract`; `MultimodalToAudioGenerator` `mix`; `TextToVideoGenerator` `generate`; `ImageToVideoGenerator` `animate`; `AudioToVideoGenerator` `talking_head`; `VideoToVideoGenerator` `reframe`, `concatenate`; `MultimodalToVideoGenerator` `lip_sync`, `mux`, `subtitle`
+- **THEN** they are, default first: `TextToImageGenerator` `generate`; `ImageToImageGenerator` `edit`, `upscale`, `remove_background`, `collage`; `VideoToImageGenerator` `thumbnail`, `frame`; `MultimodalToImageGenerator` `edit`; `TextToAudioGenerator` `speech`, `music`, `sound`; `AudioToAudioGenerator` `separate`, `enhance`, `convert_voice`, `concatenate`; `VideoToAudioGenerator` `extract`; `MultimodalToAudioGenerator` `mix`, `speech`; `TextToVideoGenerator` `generate`; `ImageToVideoGenerator` `animate`; `AudioToVideoGenerator` `talking_head`; `VideoToVideoGenerator` `reframe`, `concatenate`; `MultimodalToVideoGenerator` `lip_sync`, `mux`, `subtitle`
 
 #### Scenario: Invalid operation
 - **WHEN** `TextToAudioGenerator(operation='edit')` is fitted
@@ -38,6 +38,13 @@ The operations `collage`, `frame`, `concatenate`, `extract`, `mix`, `mux` and `s
 - **WHEN** `ImageToImageGenerator(operation='edit', instructions='add snow')`, `operation='upscale', scale=2` and `operation='remove_background'` predict on a 64×48 image on `dummy`
 - **THEN** they return a 64×48 image, a 128×96 image and an RGBA 64×48 image
 
+### Requirement: Image edits with per-sample instructions
+`MultimodalToImageGenerator(operation='edit')` SHALL edit `image` with the `instructions` of the same sample, inside its optional `mask`.
+
+#### Scenario: Edit text per image
+- **WHEN** it predicts on `{'image': photo, 'instructions': 'Write Γεια here', 'mask': mask}` on `dummy`
+- **THEN** it returns one image of the photo's size, and the edit request carries those instructions and that mask
+
 ### Requirement: Audio from text
 `TextToAudioGenerator` SHALL produce speech in `voice` and `language`, or music or sound of `duration` seconds.
 
@@ -46,15 +53,29 @@ The operations `collage`, `frame`, `concatenate`, `extract`, `mix`, `mux` and `s
 - **THEN** it returns one `Audio` of 5 seconds
 
 ### Requirement: Audio from audio and video
-`AudioToAudioGenerator` SHALL return the `stem` (`vocals` or `accompaniment`) of a separation, a denoised copy, the same speech in `voice`, or a list of audio joined with `gap` seconds between. `VideoToAudioGenerator` SHALL return the mono audio track of a video. `MultimodalToAudioGenerator` SHALL mix named tracks with `volumes`, lowering the tracks in `duck_under` while the track `duck_for` is not silent.
+`AudioToAudioGenerator` SHALL return the `stem` (`vocals` or `accompaniment`) of a separation, a denoised copy, the same speech in `voice`, or a list of audio joined with `gap` seconds between. `VideoToAudioGenerator` SHALL return the mono audio track of a video.
 
 #### Scenario: Separated vocals
 - **WHEN** `AudioToAudioGenerator(operation='separate', stem='vocals', backend='dummy')` predicts on a song
 - **THEN** it returns one `Audio` as long as the song
 
+### Requirement: Mixed tracks
+`MultimodalToAudioGenerator(operation='mix')` SHALL mix named tracks with `volumes`, lowering the tracks in `duck_under` while the track `duck_for` is not silent. A track SHALL be audio, the audio track of a video, or a list of timed records with `start` and `media` placed at their start.
+
 #### Scenario: Ducked music
 - **WHEN** `MultimodalToAudioGenerator(duck_under=['music'], duck_for='voice')` mixes `{'voice': speech, 'music': song}`
 - **THEN** the output is as long as the longer track and the music is quieter where the voice speaks
+
+#### Scenario: Timed track
+- **WHEN** `MultimodalToAudioGenerator()` mixes `{'dialogue': speech, 'description': [{'start': 2.0, 'media': clip}]}`
+- **THEN** the clip starts at 2 seconds of the output
+
+### Requirement: Speech with a voice per sample
+`MultimodalToAudioGenerator(operation='speech')` SHALL speak the `text` of every sample in its `voice`, a voice name or reference audio.
+
+#### Scenario: Voice per sample
+- **WHEN** `MultimodalToAudioGenerator(operation='speech', backend='dummy')` predicts on `{'text': 'Hello', 'voice': recording}`
+- **THEN** the speech request carries `recording` as its voice
 
 ### Requirement: Video from text, images and audio
 `TextToVideoGenerator` SHALL create a video of `duration` and `size`. `ImageToVideoGenerator` SHALL animate an image with optional `instructions` for the motion. `AudioToVideoGenerator` SHALL make `avatar` speak the audio.
@@ -87,6 +108,13 @@ The operations `collage`, `frame`, `concatenate`, `extract`, `mix`, `mux` and `s
 #### Scenario: Learned style
 - **WHEN** it is constructed with three watercolor `style_images` and fitted on a backend that describes images
 - **THEN** `style_` is set and every generation request carries it
+
+### Requirement: Reference images learned from a prompt
+`TextToImageGenerator(reference_prompt=...)` SHALL generate `reference_images_` from the prompt at `fit` and send them with every request, with explicit `reference_images` taking precedence.
+
+#### Scenario: Consistent characters
+- **WHEN** `TextToImageGenerator(reference_prompt='a girl with a red scarf', backend='dummy').fit()` predicts two prompts
+- **THEN** `reference_images_` holds one image and both requests carry it
 
 ### Requirement: Portrait prepared for talking heads
 `AudioToVideoGenerator.fit` SHALL prepare `avatar_` from `avatar`: converted to RGB, center-cropped to a square, and resized to the backend's input size.

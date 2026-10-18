@@ -67,7 +67,7 @@ class TextClassifier(BaseClassifier):
         (2,)
     """
 
-    task: ClassVar[str] = 'classify_text'
+    operations: ClassVar[dict[str, str | None]] = {'classify': 'classify_text'}
     input_kind: ClassVar[Literal['text']] = 'text'
 
     def __init__(

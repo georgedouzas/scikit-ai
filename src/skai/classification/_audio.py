@@ -68,7 +68,7 @@ class AudioClassifier(BaseClassifier):
         (2, 2)
     """
 
-    task: ClassVar[str] = 'classify_audio'
+    operations: ClassVar[dict[str, str | None]] = {'classify': 'classify_audio'}
     input_kind: ClassVar[Literal['audio']] = 'audio'
 
     def __init__(

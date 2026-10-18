@@ -1,33 +1,28 @@
 # Spec Delta
 
-## ADDED Requirements
-
-### Requirement: Input type is a parameter
-Every component that accepts more than one input type SHALL select it with an `input` parameter that is validated at `fit`, and SHALL raise `MediaReadError` or `InvalidSampleError`, naming the index, for samples of another type.
-
-#### Scenario: Text by default
-- **WHEN** `Classifier()`, `TextGenerator(instructions='...')`, `Extractor(fields=...)` and `Embedder()` are constructed without `input`
-- **THEN** they take text
-
-#### Scenario: Invalid input type
-- **WHEN** `TextGenerator(input='pdf', instructions='...')` is fitted
-- **THEN** `InvalidParameterError` names the `input` parameter
-
 ## MODIFIED Requirements
 
 ### Requirement: Components grouped by task family
-Every public component SHALL be importable from exactly one module named after its task family, apart from the deprecated 0.2 names: `Classifier` from `skai.classification`, `TextGenerator`, `ImageGenerator`, `AudioGenerator` and `VideoGenerator` from `skai.generation`, `Extractor` from `skai.extraction`, `Embedder` from `skai.embedding`, `Transcriber` from `skai.transcription`, `Segmenter` from `skai.segmentation`, `Composer` from `skai.composition`, and `MediaUnion`, `Pick`, `ForEach` and `Select` from `skai.pipeline`.
+Every public component SHALL be importable from exactly one module named after its role: classifiers from `skai.classification`, extractors from `skai.extraction`, embedders from `skai.embedding`, segmenters from `skai.segmentation`, generators from `skai.generation`, and `MediaUnion`, `Field`, `ForEach` and `TopK` from `skai.pipeline`.
 
 #### Scenario: Import by task family
-- **WHEN** a user imports every class listed above from its module
+- **WHEN** a user imports `TextClassifier` from `skai.classification`, `VideoExtractor` from `skai.extraction`, `AudioEmbedder` from `skai.embedding`, `AudioSegmenter` from `skai.segmentation`, `VideoToTextGenerator` from `skai.generation` and `ForEach` from `skai.pipeline`
 - **THEN** every import succeeds
 
 #### Scenario: Single location per component
-- **WHEN** the public names of all task-family modules are listed, leaving out deprecated names
+- **WHEN** the public names of all role modules are listed
 - **THEN** no component name appears in more than one module
 
-## REMOVED Requirements
-
 ### Requirement: Class names carry the input type
-**Reason**: Components take their input type as a parameter, so one class serves every input type.
-**Migration**: Replace the input type in the class name with `input='image'`, `'audio'`, `'video'` or `'record'`.
+Analyzers SHALL be named `{Input}{Role}`, with `Input` one of `Text`, `Image`, `Audio`, `Video` or `Multimodal` and `Role` one of `Classifier`, `Extractor`, `Embedder` or `Segmenter`. Generators SHALL be named `{Input}To{Output}Generator`, with `Output` one of `Text`, `Image`, `Audio` or `Video`. The name SHALL fix the type of every sample read and of every output returned.
+
+#### Scenario: Input type in the name
+- **WHEN** the public classes of the role modules are listed
+- **THEN** every name matches `{Input}{Role}` or `{Input}To{Output}Generator`
+
+### Requirement: Input-type modules removed
+The modules `skai.image`, `skai.audio`, `skai.text`, `skai.description` and `skai.transcription` SHALL NOT exist, and the 0.2 classes `TextSummarizer`, `TextTranslator`, `ImageDescriptor`, `AudioDescriptor`, `VideoDescriptor`, `SpeechTranscriber`, `VideoTranscriber`, `SpeechSynthesizer`, `ImageGenerator`, `ImageEditor`, `ImageAnimator`, `VideoGenerator` and `TalkingAvatarGenerator` SHALL NOT be importable.
+
+#### Scenario: Old import path
+- **WHEN** a user runs `from skai.text import TextSummarizer` or `from skai.generation import ImageGenerator`
+- **THEN** an `ImportError` is raised

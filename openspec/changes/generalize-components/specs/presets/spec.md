@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Gives common tasks readable names on top of the general components: presets return configured components, and
-recipes return configured pipelines, both as plain scikit-learn estimators.
+Gives common tasks readable names on top of the components: presets return configured components, and recipes return
+configured pipelines, both as plain scikit-learn estimators.
 
 ## ADDED Requirements
 
 ### Requirement: Component presets
-The library SHALL provide `skai.presets`, functions that return a general component configured for a common task, and every preset SHALL pass extra keyword arguments to the component.
+The library SHALL provide `skai.presets`, functions that return a component configured for a common task, and every preset SHALL pass extra keyword arguments to the component.
 
 #### Scenario: Available presets
 - **WHEN** a user lists `skai.presets`
@@ -16,14 +16,14 @@ The library SHALL provide `skai.presets`, functions that return a general compon
 
 #### Scenario: Summarizer preset
 - **WHEN** `skai.presets.summarizer(max_length=50, backend='dummy')` is called
-- **THEN** it returns a `TextGenerator` with summarizing instructions, `max_length=50` and the `dummy` backend
+- **THEN** it returns a `TextToTextGenerator` with summarizing instructions, `max_length=50` and the `dummy` backend
 
 #### Scenario: Presets are ordinary estimators
 - **WHEN** a preset's result is cloned, put in a pipeline or tuned with `GridSearchCV`
 - **THEN** it behaves exactly like the component it returns
 
 ### Requirement: Pipeline recipes
-The library SHALL provide `skai.recipes`, functions that return a configured `Pipeline` for every pipeline of the `pipelines` capability. Every recipe SHALL take a `backend` that is passed to every step that uses one, and keyword arguments for its main choices.
+The library SHALL provide `skai.recipes`, functions that return a configured `Pipeline` for every recipe of the `pipelines` capability. Every recipe SHALL take a `backend` passed to every step that uses one, and keyword arguments for its main choices.
 
 #### Scenario: Recipe returns a pipeline
 - **WHEN** `skai.recipes.explainer_video(backend='dummy')` is called

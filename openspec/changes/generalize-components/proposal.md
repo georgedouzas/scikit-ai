@@ -2,37 +2,39 @@
 
 ## Why
 
-0.2 has one class per task and input type: `TextSummarizer`, `TextTranslator`, `ImageDescriptor`, `AudioDescriptor`,
-`SpeechSynthesizer`, `ImageEditor` and so on. Many are the same operation with a different prompt, and the roadmap
-would add dozens more (`QuizWriter`, `ScriptWriter`, `Storyboarder`, ...). That makes the catalog large and hard to
-compose. The most useful results, such as dubbed videos and narrated explainers, also need shapes a linear pipeline
-cannot express: several inputs per sample, one sample split into many, and many joined into one.
-
-A component should be distinct only when it returns a different kind of output, plays a different scikit-learn role,
-learns differently in `fit`, or needs a different model family. Prompt-only variations become parameters.
+0.2 has one class per task: `TextSummarizer`, `TextTranslator`, `ImageDescriptor`, `SpeechTranscriber`,
+`ImageEditor` and so on. Many are the same operation with a different prompt, and the roadmap would add dozens more
+(`QuizWriter`, `ScriptWriter`, `Storyboarder`, ...). The class names mix three axes (task, input and output), so they
+are hard to guess and hard to compose. The most useful results, such as dubbed videos and narrated explainers, also
+need shapes a linear pipeline cannot express: several inputs per sample, one sample split into many, and many joined
+into one.
 
 ## What Changes
 
-- **BREAKING** Replace the 21 classes of 0.2 with 10 general components, whose input type is a parameter:
+- **BREAKING** Replace the task-named classes of 0.2 with a fixed grid named by input and output, with no aliases:
+  - Analyzers are `{Input}{Role}`, with `Input` one of `Text`, `Image`, `Audio`, `Video` or `Multimodal` and
+    `Role` one of `Classifier`, `Extractor`, `Embedder` or `Segmenter`.
+  - Generators are `{Input}To{Output}Generator`, with `Output` one of `Text`, `Image`, `Audio` or `Video`.
+  - Tasks that are prompts become `instructions`, and model families or procedures become `operation`.
+- The grid:
 
-| Component | Module | Input | Output |
-|---|---|---|---|
-| `Classifier` | `skai.classification` | text, image, audio, video, record | labels and probabilities |
-| `TextGenerator` | `skai.generation` | text, image, audio, video, record | text |
-| `Extractor` | `skai.extraction` | text, image, audio, video, record | records following `fields`, with nested lists |
-| `Embedder` | `skai.embedding` | text, image, audio, video | vectors |
-| `Transcriber` | `skai.transcription` | audio, video, image | text or timed records, optionally with speakers |
-| `Segmenter` | `skai.segmentation` | image, video, audio, text | lists of regions in space or time |
-| `ImageGenerator` | `skai.generation` | text, image | images (generate, edit, upscale, remove background) |
-| `AudioGenerator` | `skai.generation` | text, audio | audio (speech, music, sound, convert voice, enhance, separate) |
-| `VideoGenerator` | `skai.generation` | text, image, audio, record, video | videos (generate, animate, talking head, lip sync, reframe) |
-| `Composer` | `skai.composition` | lists and records of media | one image, audio or video (concatenate, mix, mux, subtitle) |
+| Module | Classes |
+|---|---|
+| `skai.classification` | `TextClassifier`, `ImageClassifier`, `AudioClassifier`, `VideoClassifier`, `MultimodalClassifier` |
+| `skai.extraction` | `TextExtractor`, `ImageExtractor`, `AudioExtractor`, `VideoExtractor`, `MultimodalExtractor` |
+| `skai.embedding` | `TextEmbedder`, `ImageEmbedder`, `AudioEmbedder`, `VideoEmbedder` |
+| `skai.segmentation` | `TextSegmenter`, `ImageSegmenter`, `AudioSegmenter`, `VideoSegmenter` |
+| `skai.generation` | `TextToTextGenerator`, `ImageToTextGenerator`, `AudioToTextGenerator`, `VideoToTextGenerator`, `MultimodalToTextGenerator`, `TextToImageGenerator`, `ImageToImageGenerator`, `VideoToImageGenerator`, `TextToAudioGenerator`, `AudioToAudioGenerator`, `VideoToAudioGenerator`, `MultimodalToAudioGenerator`, `TextToVideoGenerator`, `ImageToVideoGenerator`, `AudioToVideoGenerator`, `VideoToVideoGenerator`, `MultimodalToVideoGenerator` |
+| `skai.pipeline` | `MediaUnion`, `Field`, `ForEach`, `TopK` |
 
-- Add four pipeline primitives in `skai.pipeline`: `MediaUnion` (records of several inputs), `Pick` (one field),
-  `ForEach` (every item of a list) and `Select` (the best items of a list).
-- Add `skai.presets`, functions that return configured components for common tasks, and `skai.recipes`, functions that
-  return 16 configured pipelines, from a brief to an explainer video to dubbing in the original voice.
-- Keep every 0.2 name importable for 0.3 as a deprecated subclass, removed in 0.4.
+- Add multimodal samples (dicts or DataFrame rows of named media) and list-valued samples, built by `MediaUnion` and
+  the segmenters and consumed by `ForEach`, `TopK` and the joining operations.
+- Add `skai.presets` (configured components for common tasks) and `skai.recipes` (16 configured pipelines, from a brief
+  to an explainer video to dubbing in the original voice).
+- Remove `skai.text`, `skai.description` and `skai.transcription`, and the 0.2 names `TextSummarizer`, `TextTranslator`,
+  `ImageDescriptor`, `AudioDescriptor`, `VideoDescriptor`, `SpeechTranscriber`, `VideoTranscriber`, `SpeechSynthesizer`,
+  `ImageGenerator`, `ImageEditor`, `ImageAnimator`, `VideoGenerator` and `TalkingAvatarGenerator`. The classifiers,
+  `TextExtractor` and the text, image and audio embedders keep their names.
 - Replace the prompted backend tasks `summarize`, `translate` and `describe_*` with one `generate_text` task, and add
   the backend tasks of the new operations.
 - Carry over the verification left open by `add-roadmap-components`: Sora, and the providers and models that need
@@ -41,24 +43,25 @@ learns differently in `fit`, or needs a different model family. Prompt-only vari
 ## Capabilities
 
 ### New Capabilities
-- `text-generation`: `TextGenerator` for every input type, with examples, a learned length and a glossary.
-- `extraction`: `Extractor` for every input type, with nested and list fields.
-- `segmentation`: `Segmenter` for regions in space and time.
-- `composition`: `Composer` for local assembly of media.
-- `pipeline-primitives`: `MediaUnion`, `Pick`, `ForEach` and `Select`.
+- `text-generation`: the five text generators, with the instruct and transcribe operations.
+- `extraction`: the five extractors, with nested and list fields.
+- `segmentation`: the four segmenters, with regions in space and time.
+- `pipeline-primitives`: `MediaUnion`, `Field`, `ForEach` and `TopK`.
 - `presets`: `skai.presets` and `skai.recipes`.
-- `deprecations`: the 0.2 names during 0.3.
 
 ### Modified Capabilities
-- `classification`, `embedding`, `transcription`, `generation`: one general class each, with `input` and `operation`.
+- `classification`: adds `MultimodalClassifier`.
+- `embedding`: adds `VideoEmbedder`.
+- `generation`: the twelve media generators and their operations.
 - `pipelines`: 16 recipes replace the chain-specific requirements.
-- `module-layout`, `media-estimator-api`, `media-io`, `backends`: new names, records and list-valued samples, and
-  backend coverage per operation.
-- `description`, `text-processing`: retired, their requirements now in `text-generation` and `extraction`.
+- `module-layout`, `media-estimator-api`, `media-io`, `backends`: the naming grid, multimodal and list-valued samples,
+  and backend coverage per operation.
+- `description`, `text-processing`, `transcription`: retired, their requirements now in `text-generation`,
+  `extraction` and `segmentation`.
 
 ## Impact
 
-- Public API: new classes and modules. The old names warn and keep working until 0.4. Released as 0.3.0.
+- Public API: a breaking release, 0.3.0, with the migration page mapping every removed name.
 - Backends: new tasks for the new operations, implemented where providers offer them, with `UnsupportedBackendError`
-  elsewhere.
-- Docs: the guide is reorganized around the 10 components, with a presets page and a recipes page.
+  elsewhere. Custom backends that implement the 0.2 prompted tasks must implement `generate_text`.
+- Docs: the guide is reorganized around the grid, with a presets page and a recipes page.

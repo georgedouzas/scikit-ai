@@ -11,9 +11,9 @@
 
 - [x] 2.1 Run `pdm lock && pdm install` and commit `pdm.lock`, verifying a clean install from the lock
 - [x] 2.2 Run `pdm formatting` and `pdm checks` (ruff, mypy, deptry, pydoclint, typos), fix findings or add targeted ignores, and verify all checks pass
-- [ ] 2.3 Run `pdm tests` and verify the existing suite passes on all supported Python versions
+- [x] 2.3 Run `pdm tests` and verify the existing suite passes on all supported Python versions
 - [x] 2.4 Run `pdm docs build` with properdocs, verify the site builds, and confirm `mkdocs.yml` is gone
 
 ## 3. Integration
 
-- [ ] 3.1 Push the branch and verify the regenerated GitHub CI and docs workflows pass
+- [x] 3.1 Push the branch and verify the regenerated GitHub CI and docs workflows pass

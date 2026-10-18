@@ -99,5 +99,5 @@ Sora. Hugging Face covers `segment_image` (SAM-class models), `detect_objects` (
 - [A second breaking release right after 0.2, without shims] → The grid keeps the most used 0.2 names, and the migration page maps every removed name with its replacement code.
 - [Forty classes look like many] → They form one grid, so names can be guessed, and the docs open with the grid and a table of tasks with their configuration.
 - [Records and lists in object arrays are opaque to `set_output('pandas')`] → `Extractor.transform` keeps returning columns, and the docs show `Pick` to get a field.
-- [Local media assembly needs PyAV, and long videos use much memory] → `Composer` requires the `video` extra at `fit` with a clear error, and the docs state the memory limit of the first version.
+- [Local media assembly needs PyAV, and long videos use much memory] → The local operations require the `video` extra at `fit` with a clear error, and the docs state the memory limit of the first version.
 - [Many new operations depend on models that are hard to run here] → Each operation is implemented only with a provider whose API is known, verified end to end where possible, and listed as open in tasks otherwise.

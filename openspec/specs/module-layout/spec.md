@@ -10,7 +10,7 @@ input type from its class name.
 Every public component SHALL be importable from exactly one module named after its task family: `skai.classification`, `skai.description`, `skai.transcription`, `skai.text`, `skai.embedding` or `skai.generation`.
 
 #### Scenario: Import by task family
-- **WHEN** a user imports `TextClassifier` and `ImageClassifier` from `skai.classification`, `ImageDescriptor` from `skai.description`, `SpeechTranscriber` from `skai.transcription`, `TextSummarizer` and `TextTranslator` from `skai.text`, `TextEmbedder` from `skai.embedding`, and `SpeechSynthesizer`, `ImageGenerator` and `TalkingAvatarGenerator` from `skai.generation`
+- **WHEN** a user imports `TextClassifier`, `ImageClassifier`, `AudioClassifier` and `VideoClassifier` from `skai.classification`, `ImageDescriptor`, `AudioDescriptor` and `VideoDescriptor` from `skai.description`, `SpeechTranscriber` and `VideoTranscriber` from `skai.transcription`, `TextSummarizer`, `TextTranslator` and `TextExtractor` from `skai.text`, `TextEmbedder`, `ImageEmbedder` and `AudioEmbedder` from `skai.embedding`, and `SpeechSynthesizer`, `ImageGenerator`, `TalkingAvatarGenerator`, `VideoGenerator`, `ImageEditor` and `ImageAnimator` from `skai.generation`
 - **THEN** every import succeeds
 
 #### Scenario: Single location per component

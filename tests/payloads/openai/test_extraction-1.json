@@ -1,0 +1,61 @@
+{
+  "method": "POST",
+  "path": "/v1/chat/completions",
+  "request": {
+    "messages": [
+      {
+        "content": "You extract information from texts. Answer with one JSON object whose keys are exactly the requested fields. Use null for a field that the text does not contain.",
+        "role": "system"
+      },
+      {
+        "content": [
+          {
+            "text": "Fields:\n- name: person name\n- city: city\n\nText:\nAda Lovelace lived in London.",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "model": "gpt-5-mini",
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "annotations": [],
+          "content": "{\"name\":\"Ada Lovelace\",\"city\":\"London\"}",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792295222,
+    "id": "chatcmpl-EaC9Obbhat2FPMFQ9Hr12aM8T7Wj1",
+    "model": "gpt-5-mini-2025-08-07",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 85,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 64,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 64,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 149
+    }
+  },
+  "status": 200
+}

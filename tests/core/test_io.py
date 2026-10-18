@@ -247,7 +247,15 @@ def test_sample_frames_spaces_frames_evenly():
     frames = sample_frames(Video(np.zeros((250, 4, 4, 3), dtype=np.uint8), fps=25), 5)
     assert frames.timestamps == (0.0, 2.0, 4.0, 6.0, 8.0)
     assert all(isinstance(frame, Image.Image) for frame in frames.frames)
-    assert frames.audio.duration == 10.0
+    assert frames.duration == 10.0
+    assert frames.audio is None
+
+
+def test_sample_frames_keeps_the_audio_track(audio):
+    """Carry the mono audio track of a video that has one."""
+    frames = sample_frames(Video(np.zeros((25, 4, 4, 3), dtype=np.uint8), fps=25, audio=audio), 2)
+    assert frames.audio is not None
+    assert frames.audio.duration == 1.0
 
 
 def test_sample_frames_keeps_short_videos_whole():

@@ -4,16 +4,16 @@
   "request": {
     "model": "gpt-image-1",
     "n": 1,
-    "prompt": "A small blue car parked on an empty street",
+    "prompt": "A single red apple on a white table",
     "size": "1024x1024"
   },
   "response": {
     "background": "opaque",
-    "created": 1792270878,
+    "created": 1792295342,
     "data": [
       {
-        "b64_json": "<2728284 characters>",
-        "generation_id": "7f82f0eb-fabe-4dae-88e4-5be3071b4854"
+        "b64_json": "<1896936 characters>",
+        "generation_id": "673c822d-c82d-4cf8-8e51-6e8cfa158a3f"
       }
     ],
     "output_format": "png",
@@ -21,17 +21,17 @@
     "safety_identifier": null,
     "size": "1024x1024",
     "usage": {
-      "input_tokens": 15,
+      "input_tokens": 14,
       "input_tokens_details": {
         "image_tokens": 0,
-        "text_tokens": 15
+        "text_tokens": 14
       },
       "output_tokens": 4160,
       "output_tokens_details": {
         "image_tokens": 4160,
         "text_tokens": 0
       },
-      "total_tokens": 4175
+      "total_tokens": 4174
     }
   },
   "status": 200

@@ -173,7 +173,21 @@ def e2e(session: nox.Session) -> None:
     Arguments:
         session: The nox session.
     """
-    session.run('pdm', 'install', '-G', 'openai', '-G', 'video', '-dG', 'e2e', external=True)
+    session.run(
+        'pdm',
+        'install',
+        '-G',
+        'openai',
+        '-G',
+        'litellm',
+        '-G',
+        'hf',
+        '-G',
+        'video',
+        '-dG',
+        'e2e',
+        external=True,
+    )
     session.run(
         'pytest',
         '-p',

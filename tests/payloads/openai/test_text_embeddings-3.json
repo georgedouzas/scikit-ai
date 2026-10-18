@@ -1,0 +1,36 @@
+{
+  "method": "POST",
+  "path": "/v1/embeddings",
+  "request": {
+    "dimensions": 8,
+    "input": [
+      "c"
+    ],
+    "model": "text-embedding-3-small"
+  },
+  "response": {
+    "data": [
+      {
+        "embedding": [
+          0.63232421875,
+          0.5126953125,
+          0.161376953125,
+          -0.06536865234375,
+          0.45166015625,
+          0.2130126953125,
+          -0.016876220703125,
+          0.2418212890625
+        ],
+        "index": 0,
+        "object": "embedding"
+      }
+    ],
+    "model": "text-embedding-3-small",
+    "object": "list",
+    "usage": {
+      "prompt_tokens": 1,
+      "total_tokens": 1
+    }
+  },
+  "status": 200
+}

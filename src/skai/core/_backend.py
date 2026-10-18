@@ -119,11 +119,14 @@ class Backend(BaseEstimator):
         return {key: value for key, value in state.items() if not key.startswith('_') or key == '_sklearn_version'}
 
     def __sklearn_clone__(self) -> Self:
-        """Clone the backend, sharing the parameters that hold live objects such as clients."""
+        """Clone the backend, sharing live objects such as clients, including those inside `options`."""
         params = self.get_params(deep=False)
         cloned = {
-            name: value if name in self.shared_params else clone(value, safe=False) for name, value in params.items()
+            name: value if name in self.shared_params else clone(value, safe=False)
+            for name, value in params.items()
+            if name != 'options'
         }
+        cloned['options'] = None if self.options is None else dict(self.options)
         return type(self)(**cloned)
 
     @classmethod
@@ -556,6 +559,14 @@ class PromptedBackend(Backend):
         prompted = {task for task in PROMPTED_AUDIO_TASKS if getattr(cls, task) is getattr(PromptedBackend, task)}
         return tasks - prompted
 
+    def sends_video_audio_now(self) -> bool:
+        """Return whether video requests include the audio track with the current settings.
+
+        Returns:
+            The class flag `sends_video_audio`, unless a subclass makes it depend on its parameters.
+        """
+        return self.sends_video_audio
+
     @abstractmethod
     def complete(self, prompt: Prompt, model: str) -> str:
         """Return the answer of a model to a prompt.
@@ -656,7 +667,7 @@ class PromptedBackend(Backend):
         Returns:
             A score of one for every label the model names and zero for the others.
         """
-        prompt = build_classification_prompt(request, include_audio=self.sends_video_audio)
+        prompt = build_classification_prompt(request, include_audio=self.sends_video_audio_now())
         answer = self.complete(prompt, self.resolve_model('classify_video'))
         return parse_labels(answer, request.labels, request.multi_label)
 
@@ -682,7 +693,7 @@ class PromptedBackend(Backend):
         Returns:
             The description.
         """
-        prompt = build_description_prompt(request, include_audio=self.sends_video_audio)
+        prompt = build_description_prompt(request, include_audio=self.sends_video_audio_now())
         return self.complete(prompt, self.resolve_model('describe_video')).strip()
 
     def extract_fields(self, request: ExtractionRequest) -> dict[str, Any]:

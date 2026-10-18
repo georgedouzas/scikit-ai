@@ -89,7 +89,7 @@ def _format_input(sample: Sample, images: list[Image.Image], audio: list[Audio],
     if isinstance(sample, VideoFrames):
         references = [_format_input(frame, images, audio, include_audio) for frame in sample.frames]
         text = f'video frames {" ".join(references)}'
-        if not include_audio:
+        if not include_audio or sample.audio is None:
             return text
         return f'{text} with audio {_format_input(sample.audio, images, audio, include_audio)}'
     images.append(sample)

@@ -43,7 +43,10 @@ themselves. `VideoTranscriber` reuses `transcribe`, so every transcription backe
 `Prompt` gains `audio: tuple[Audio, ...]`, referred to as `<audio 1>`, like images. `PromptedBackend` implements
 `classify_audio`, `describe_audio`, `classify_video`, `describe_video` and `extract_fields` on top of `complete`.
 Video tasks send the sampled frames as images, plus the audio track when the backend accepts audio. Backends declare
-`accepts_audio: ClassVar[bool]`. A component whose task needs audio raises `UnsupportedBackendError` at `fit` when the
+`accepts_audio: ClassVar[bool]`. Sampled frames carry the audio track only when the video has one, so silent videos
+never send audio. Whether a video request includes its audio depends on the model as much as on the provider, so
+`PromptedBackend` asks `sends_video_audio()`, which returns the class flag, and `LiteLLMBackend` overrides it with a
+`video_audio` parameter, on by default for its Gemini default and off for models that take text and images only. A component whose task needs audio raises `UnsupportedBackendError` at `fit` when the
 backend does not accept it, as voice cloning and timestamps do today.
 
 ### Structured extraction

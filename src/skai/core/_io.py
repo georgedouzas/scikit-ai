@@ -279,14 +279,15 @@ def sample_frames(video: Video, n_frames: int) -> VideoFrames:
             The number of frames to sample.
 
     Returns:
-        The sampled frames, their times and the mono audio track.
+        The sampled frames, their times, the length of the video, and its mono audio track when it has one.
     """
     frames = video.frames
     count = min(n_frames, frames.shape[0])
     indices = np.arange(count) * frames.shape[0] // count
     images = tuple(Image.fromarray(frames[index]) for index in indices)
     timestamps = tuple(float(index / video.fps) for index in indices)
-    return VideoFrames(images, timestamps, video.audio_track())
+    audio = None if video.audio is None else video.audio_track()
+    return VideoFrames(images, timestamps, video.duration, audio)
 
 
 def write_outputs(

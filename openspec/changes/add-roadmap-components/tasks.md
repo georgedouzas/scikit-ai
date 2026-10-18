@@ -9,7 +9,9 @@
 
 ## 2. Provider verification
 
-- [ ] 2.1 Make one real call per provider and new task with the planned default models on `hf` and `litellm`, record the payloads under `tests/payloads/`, and update the default-model table with the models that work (blocked on credentials and hardware)
+- [x] 2.1 Run the LiteLLM backend end to end through OpenAI routes (`openai/...` models) with the existing key: prompted text, image, audio and video tasks, JSON extraction and text embeddings, record the payloads, and verify they pass
+- [x] 2.7 Run the Hugging Face backend end to end with the small local models (zero-shot text and image classification, embeddings with MiniLM and CLIP, Whisper-small transcription, MMS-TTS speech, SD-Turbo images, SmolVLM description, Qwen2.5-1.5B summary, translation and extraction, CLAP audio classification and embeddings), behind `SKAI_E2E_HF=1`, fix what fails, and verify they pass
+- [ ] 2.8 Verify the remaining defaults when credentials and hardware are available: Gemini, Anthropic and Cohere through LiteLLM, and Qwen2-Audio-7B, Wan, InstructPix2Pix and Stable Video Diffusion on `hf` (blocked)
 - [x] 2.5 Add an OpenAI end-to-end scenario for every new component OpenAI supports, record the payloads, and verify they pass (audio classification and description, video classification, description and transcription, extraction, image editing)
 - [ ] 2.6 Run the Sora scenario for `VideoGenerator` and `ImageAnimator` behind `SKAI_E2E_VIDEO=1` and verify it passes (blocked: the OpenAI account gets 404 from `/v1/videos`, so it has no Sora API access)
 - [x] 2.2 Add the `pdm e2e` harness: an `e2e/` suite outside `pdm tests` that loads credentials from `.env`, skips without them, records sanitized responses under `tests/payloads/<provider>/`, gates video generation behind `SKAI_E2E_VIDEO=1`, and a test that fails if a recording holds anything shaped like a credential

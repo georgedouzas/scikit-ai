@@ -306,7 +306,7 @@ class DummyBackend(Backend):
             The description.
         """
         assert isinstance(request.sample, VideoFrames)
-        frames, seconds = len(request.sample.frames), request.sample.audio.duration
+        frames, seconds = len(request.sample.frames), request.sample.duration
         return f'A {request.detail} description of {frames} frames of a {seconds:.2f} second video.'
 
     def extract_fields(self, request: ExtractionRequest) -> dict[str, Any]:

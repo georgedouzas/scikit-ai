@@ -40,6 +40,10 @@ class LiteLLMBackend(PromptedBackend):
         api_base:
             The base URL of the provider's API.
 
+        video_audio:
+            Whether video requests include the audio track. It suits models that take audio, such as Gemini, and must
+            be `False` for models that take text and images only.
+
         options:
             Extra keyword arguments passed to every LiteLLM call.
 
@@ -72,12 +76,14 @@ class LiteLLMBackend(PromptedBackend):
         *,
         api_key_env: str | None = None,
         api_base: str | None = None,
+        video_audio: bool = True,
         options: dict | None = None,
         max_concurrency: int = 8,
     ) -> None:
         super().__init__(model, options=options, max_concurrency=max_concurrency)
         self.api_key_env = api_key_env
         self.api_base = api_base
+        self.video_audio = video_audio
 
     @property
     def _litellm(self) -> Any:
@@ -90,6 +96,14 @@ class LiteLLMBackend(PromptedBackend):
         """Return the API key and base URL arguments of a LiteLLM call."""
         credentials = {'api_key': read_env(self.api_key_env)} if self.api_key_env else {}
         return credentials | ({'api_base': self.api_base} if self.api_base else {})
+
+    def sends_video_audio_now(self) -> bool:
+        """Return the `video_audio` parameter.
+
+        Returns:
+            Whether video requests include the audio track.
+        """
+        return self.video_audio
 
     def connect(self) -> 'LiteLLMBackend':
         """Import LiteLLM and check that the credential variable is set.

@@ -161,8 +161,10 @@ class HFBackend(PromptedBackend):
         processor = self._load(('clap-processor', model), lambda: transformers.ClapProcessor.from_pretrained(model))
         clap = self._load(('clap-model', model), lambda: transformers.ClapModel.from_pretrained(model))
         samples = audio.resample(CLAP_SAMPLE_RATE).samples
-        inputs = processor(audios=samples, sampling_rate=CLAP_SAMPLE_RATE, return_tensors='pt')
-        return clap.get_audio_features(**inputs)[0].detach().cpu().numpy()
+        inputs = processor(audio=samples, sampling_rate=CLAP_SAMPLE_RATE, return_tensors='pt')
+        output = clap.get_audio_features(**inputs)
+        features = getattr(output, 'pooler_output', output)
+        return features[0].detach().cpu().numpy()
 
     def connect(self) -> 'HFBackend':
         """Check that the `hf` extra is installed.
